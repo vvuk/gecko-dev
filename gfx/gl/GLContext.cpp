@@ -500,6 +500,16 @@ GLContext::InitWithPrefix(const char *prefix, bool trygl)
                 { (PRFuncPtr*) &mSymbols.fPointParameterf, { "PointParameterf", nullptr } },
                 { (PRFuncPtr*) &mSymbols.fDrawBuffer, { "DrawBuffer", nullptr } },
                 { (PRFuncPtr*) &mSymbols.fDrawBuffers, { "DrawBuffers", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fClientActiveTexture, { "ClientActiveTexture", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fDisableClientState, { "DisableClientState", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fEnableClientState, { "EnableClientState", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fLoadIdentity, { "LoadIdentity", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fLoadMatrixf, { "LoadMatrixf", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fMatrixMode, { "MatrixMode", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fTexGeni, { "TexGeni", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fTexGenf, { "TexGenf", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fTexGenfv, { "TexGenfv", nullptr } },
+                { (PRFuncPtr*) &mSymbols.fVertexPointer, { "VertexPointer", nullptr } },
                 { nullptr, { nullptr } },
             };
 
