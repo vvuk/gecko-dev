@@ -16,8 +16,10 @@
 #endif
 
 #include "GLContext.h"
+#include "GLContextSkia.h"
 
 using mozilla::gl::GLContext;
+using mozilla::gl::GLContextSkia;
 using mozilla::gfx::DrawTarget;
 
 static mozilla::ThreadLocal<GLContext*> sGLContext;
@@ -26,8 +28,8 @@ extern "C" {
 
 void EnsureGLContext(const GrGLInterface* i)
 {
-    const DrawTarget* drawTarget = reinterpret_cast<const DrawTarget*>(i->fCallbackData);
-    GLContext* gl = static_cast<GLContext*>(drawTarget->GetGLContext());
+    const GLContextSkia* contextSkia = reinterpret_cast<const GLContextSkia*>(i->fCallbackData);
+    GLContext* gl = contextSkia->GetGLContext();
     gl->MakeCurrent();
 
     if (!sGLContext.initialized()) {

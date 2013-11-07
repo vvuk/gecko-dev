@@ -102,6 +102,7 @@
 #include "nsIGfxInfo.h"
 #endif
 using mozilla::gl::GLContext;
+using mozilla::gl::GLContextSkia;
 using mozilla::gl::GLContextProvider;
 
 #ifdef XP_WIN
@@ -427,7 +428,7 @@ public:
     if (!context)
       return;
 
-    GLContext* glContext = static_cast<GLContext*>(context->mTarget->GetGLContext());
+    GLContext* glContext = static_cast<GLContextSkia*>(context->mTarget->GetGLContextSkia())->GetGLContext();
     if (!glContext)
       return;
 
@@ -739,7 +740,7 @@ CanvasRenderingContext2D::RedrawUser(const gfxRect& r)
 void CanvasRenderingContext2D::Demote()
 {
 #ifdef  USE_SKIA_GPU
-  if (!IsTargetValid() || mForceSoftware || !mTarget->GetGLContext())
+  if (!IsTargetValid() || mForceSoftware || !static_cast<GLContextSkia*>(mTarget->GetGLContextSkia())->GetGLContext())
     return;
 
   RemoveDemotableContext(this);
@@ -870,8 +871,11 @@ CanvasRenderingContext2D::EnsureTarget()
         }
 
         if (glContext) {
-          SkAutoTUnref<GrGLInterface> i(CreateGrGLInterfaceFromGLContext(glContext));
-          mTarget = Factory::CreateDrawTargetSkiaWithGLContextAndGrGLInterface(glContext, i, size, format);
+          GLContextSkia* glContextSkia = new GLContextSkia(glContext);
+          // Unfortunately we need to explicitly pass in the GrContext object here because to Factory (and the rest
+          // of Moz2D), the GLContextSkia object is just a GenericRefCounted and so it can't pull in the
+          // GrContext there.
+          mTarget = Factory::CreateDrawTargetSkiaWithGLContextSkia(glContextSkia, glContextSkia->GetGrContext(), size, format);
           AddDemotableContext(this);
         } else {
           mTarget = layerManager->CreateDrawTarget(size, format);
@@ -4023,7 +4027,7 @@ CanvasRenderingContext2D::GetCanvasLayer(nsDisplayListBuilder* aBuilder,
 
   CanvasLayer::Data data;
 #ifdef USE_SKIA_GPU
-  GLContext* glContext = static_cast<GLContext*>(mTarget->GetGLContext());
+  GLContext* glContext = static_cast<GLContextSkia*>(mTarget->GetGLContextSkia())->GetGLContext();
   if (glContext) {
     canvasLayer->SetPreTransactionCallback(
             CanvasRenderingContext2DUserData::PreTransactionCallback, userData);
