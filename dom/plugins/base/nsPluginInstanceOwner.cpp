@@ -187,8 +187,18 @@ nsPluginInstanceOwner::GetImageContainer()
 
   container->SetCurrentImageInTransaction(img);
 
-  float xResolution = mObjectFrame->PresContext()->GetRootPresContext()->PresShell()->GetXResolution();
-  float yResolution = mObjectFrame->PresContext()->GetRootPresContext()->PresShell()->GetYResolution();
+  nsIPresShell* curPresShell = mObjectFrame->PresContext()->PresShell();
+  float xResolution = 1.0f;
+  float yResolution = 1.0f;
+
+  while (curPresShell != nullptr) {
+    xResolution *= curPresShell->GetXResolution();
+    yResolution *= curPresShell->GetYResolution();
+
+    nsPresContext* parentContext = curPresShell->GetPresContext()->GetParentPresContext();
+    curPresShell = parentContext ? parentContext->GetPresShell() : nullptr;
+  }
+
   ScreenSize screenSize = (r * LayoutDeviceToScreenScale(xResolution, yResolution)).Size();
   mInstance->NotifySize(nsIntSize(screenSize.width, screenSize.height));
 
