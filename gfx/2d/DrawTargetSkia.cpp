@@ -174,6 +174,9 @@ GetBitmapForSurface(SourceSurface *aSurface)
 
 DrawTargetSkia::DrawTargetSkia()
   : mSnapshot(nullptr)
+#ifdef USE_SKIA_GPU
+  , mGLTextureID(0)
+#endif
 {
 }
 
@@ -787,7 +790,7 @@ DrawTargetSkia::InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
 
   SkAutoTUnref<GrTexture> skiaTexture(mGrContext->createUncachedTexture(targetDescriptor, NULL, 0));
 
-  mTexture = (uint32_t)skiaTexture->getTextureHandle();
+  mGLTextureID = (uint32_t)skiaTexture->getTextureHandle();
 
   SkAutoTUnref<SkDevice> device(new SkGpuDevice(mGrContext.get(), skiaTexture->asRenderTarget()));
   SkAutoTUnref<SkCanvas> canvas(new SkCanvas(device.get()));
@@ -920,6 +923,16 @@ void
 DrawTargetSkia::SnapshotDestroyed()
 {
   mSnapshot = nullptr;
+}
+
+void *
+DrawTargetSkia::GetNativeSurface(NativeSurfaceType aType)
+{
+  if (aType == NATIVE_SURFACE_GL_TEXTURE_ID) {
+    return (void *) mGLTextureID;
+  }
+
+  return nullptr;
 }
 
 }

@@ -103,6 +103,8 @@ public:
   bool Init(const IntSize &aSize, SurfaceFormat aFormat);
   void Init(unsigned char* aData, const IntSize &aSize, int32_t aStride, SurfaceFormat aFormat);
 
+  virtual void *GetNativeSurface(NativeSurfaceType aType);
+
 #ifdef USE_SKIA_GPU
   virtual GenericRefCountedBase* GetGLContextSkia() const MOZ_OVERRIDE { return mGLContextSkia; }
   void InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
@@ -112,7 +114,6 @@ public:
 
   void SetCacheLimits(int aCount, int aSizeInBytes);
   void PurgeCaches();
-  uint32_t GetTextureID() const { return mTexture; }
 
   static void SetGlobalCacheLimits(int aCount, int aSizeInBytes);
   static void RebalanceCacheLimits();
@@ -140,7 +141,7 @@ private:
   static int sTextureCacheCount;
   static int sTextureCacheSizeInBytes;
 
-  uint32_t mTexture;
+  uint32_t mGLTextureID;
 #endif
 
   IntSize mSize;

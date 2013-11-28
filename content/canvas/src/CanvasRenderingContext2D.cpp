@@ -4054,7 +4054,7 @@ CanvasRenderingContext2D::GetCanvasLayer(nsDisplayListBuilder* aBuilder,
             CanvasRenderingContext2DUserData::PreTransactionCallback, userData);
     data.mGLContext = glContextSkia->GetGLContext();
     data.mStream = mStream;
-    data.mTexID = mTarget->GetTextureID();
+    data.mTexID = (uint32_t) mTarget->GetNativeSurface(mgfx::NATIVE_SURFACE_GL_TEXTURE_ID);
   } else
 #endif
   {

@@ -281,16 +281,19 @@ Factory::CreateDrawTargetForData(BackendType aBackend,
     {
       RefPtr<DrawTargetSkia> newTarget;
       newTarget = new DrawTargetSkia();
+      // Skia's Init here doesn't return anything
       newTarget->Init(aData, aSize, aStride, aFormat);
       retVal = newTarget;
+      break;
     }
 #endif
 #ifdef XP_MACOSX
   case BACKEND_COREGRAPHICS:
     {
       RefPtr<DrawTargetCG> newTarget = new DrawTargetCG();
-      if (newTarget->Init(aBackend, aData, aSize, aStride, aFormat))
-        return newTarget;
+      if (newTarget->Init(aBackend, aData, aSize, aStride, aFormat)) {
+        retVal = newTarget;
+      }
       break;
     }
 #endif
