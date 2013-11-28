@@ -648,7 +648,25 @@ cairo_user_data_key_t kDrawTarget;
 RefPtr<DrawTarget>
 gfxPlatform::CreateDrawTargetForSurface(gfxASurface *aSurface, const IntSize& aSize)
 {
-  RefPtr<DrawTarget> drawTarget = Factory::CreateDrawTargetForCairoSurface(aSurface->CairoSurface(), aSize);
+  RefPtr<DrawTarget> drawTarget;
+
+  if (mContentBackend != BACKEND_CAIRO) {
+    // this only works if gfxASurface is a gfxImageSurface
+    if (aSurface->GetType() == gfxSurfaceTypeImage) {
+      gfxImageSurface *isurf = static_cast<gfxImageSurface*>(aSurface);
+      drawTarget = Factory::CreateDrawTargetForData(mContentBackend,
+                                                    isurf->Data(),
+                                                    IntSize(isurf->Width(), isurf->Height()),
+                                                    isurf->Stride(),
+                                                    ImageFormatToSurfaceFormat(isurf->Format()));
+      if (drawTarget)
+        return drawTarget;
+    }
+
+    //NS_WARNING("CreateDrawTargetForSurface with Skia content backend, but a non-image surface");
+  }
+
+  drawTarget = Factory::CreateDrawTargetForCairoSurface(aSurface->CairoSurface(), aSize);
   aSurface->SetData(&kDrawTarget, drawTarget, nullptr);
   return drawTarget;
 }

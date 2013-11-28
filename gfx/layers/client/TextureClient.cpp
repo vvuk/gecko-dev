@@ -575,6 +575,12 @@ DeprecatedTextureClientShmem::~DeprecatedTextureClientShmem()
   ReleaseResources();
 }
 
+gfx::BackendType
+DeprecatedTextureClientShmem::BackendType()
+{
+  return gfxPlatform::GetPlatform()->GetContentBackend();
+}
+
 void
 DeprecatedTextureClientShmem::ReleaseResources()
 {
@@ -675,6 +681,15 @@ DeprecatedTextureClientShmem::LockDrawTarget()
   gfxASurface* surface = GetSurface();
   if (!surface) {
     return nullptr;
+  }
+
+  // for non-cairo backends, we only interop with basic Image Surfaces;
+  // make sure we pass that to CreateDrawTargetForSurface
+  if (BackendType() != gfx::BackendType::BACKEND_CAIRO) {
+    mSurfaceAsImage = surface->GetAsImageSurface();
+    if (mSurfaceAsImage) {
+      surface = mSurfaceAsImage;
+    }
   }
 
   mDrawTarget = gfxPlatform::GetPlatform()->CreateDrawTargetForSurface(surface, mSize);

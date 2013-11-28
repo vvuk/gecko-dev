@@ -580,10 +580,7 @@ public:
   virtual gfxImageSurface* LockImageSurface() MOZ_OVERRIDE;
   virtual gfxASurface* LockSurface() MOZ_OVERRIDE { return GetSurface(); }
   virtual gfx::DrawTarget* LockDrawTarget();
-  virtual gfx::BackendType BackendType() MOZ_OVERRIDE
-  {
-    return gfx::BACKEND_CAIRO;
-  }
+  virtual gfx::BackendType BackendType() MOZ_OVERRIDE;
   virtual void Unlock() MOZ_OVERRIDE;
   virtual bool EnsureAllocated(gfx::IntSize aSize, gfxContentType aType) MOZ_OVERRIDE;
 

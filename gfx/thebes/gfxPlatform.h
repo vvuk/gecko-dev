@@ -296,6 +296,10 @@ public:
       return mPreferredCanvasBackend;
     }
 
+    mozilla::gfx::BackendType GetContentBackend() {
+      return mContentBackend;
+    }
+
     /*
      * Font bits
      */
@@ -674,10 +678,6 @@ protected:
      * Decode the backend enumberation from a string.
      */
     static mozilla::gfx::BackendType BackendTypeForName(const nsCString& aName);
-
-    mozilla::gfx::BackendType GetContentBackend() {
-      return mContentBackend;
-    }
 
     int8_t  mAllowDownloadableFonts;
     int8_t  mGraphiteShapingEnabled;
