@@ -7,7 +7,8 @@
 #include "SourceSurfaceSkia.h"
 #include "ScaledFontBase.h"
 #include "ScaledFontCairo.h"
-#include "skia/SkDevice.h"
+#include "skia/SkGpuDevice.h"
+#include "skia/SkBitmapDevice.h"
 #include "FilterNodeSoftware.h"
 
 #ifdef USE_SKIA_GPU
@@ -751,7 +752,7 @@ DrawTargetSkia::CopySurface(SourceSurface *aSurface,
 bool
 DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat)
 {
-  SkAutoTUnref<SkDevice> device(new SkDevice(GfxFormatToSkiaConfig(aFormat), aSize.width, aSize.height));
+  SkAutoTUnref<SkBaseDevice> device(new SkBitmapDevice(GfxFormatToSkiaConfig(aFormat), aSize.width, aSize.height));
 
   SkBitmap bitmap = device->accessBitmap(true);
   if (!bitmap.allocPixels()) {
@@ -796,7 +797,7 @@ DrawTargetSkia::InitWithGLContextAndGrGLInterface(GenericRefCountedBase* aGLCont
   targetDescriptor.fRenderTargetHandle = 0; // GLContext always exposes the right framebuffer as id 0
 
   SkAutoTUnref<GrRenderTarget> target(mGrContext->wrapBackendRenderTarget(targetDescriptor));
-  SkAutoTUnref<SkDevice> device(new SkGpuDevice(mGrContext.get(), target.get()));
+  SkAutoTUnref<SkGpuDevice> device(new SkGpuDevice(mGrContext.get(), target.get()));
   SkAutoTUnref<SkCanvas> canvas(new SkCanvas(device.get()));
   mCanvas = canvas.get();
 
@@ -814,18 +815,17 @@ DrawTargetSkia::SetCacheLimits(int aCount, int aSizeInBytes)
 void
 DrawTargetSkia::Init(unsigned char* aData, const IntSize &aSize, int32_t aStride, SurfaceFormat aFormat)
 {
-  bool isOpaque = false;
+  SkAlphaType alphaType = kPremul_SkAlphaType;
   if (aFormat == FORMAT_B8G8R8X8) {
     // We have to manually set the A channel to be 255 as Skia doesn't understand BGRX
     ConvertBGRXToBGRA(aData, aSize, aStride);
-    isOpaque = true;
+    alphaType = kOpaque_SkAlphaType;
   }
 
   SkBitmap bitmap;
-  bitmap.setConfig(GfxFormatToSkiaConfig(aFormat), aSize.width, aSize.height, aStride);
+  bitmap.setConfig(GfxFormatToSkiaConfig(aFormat), aSize.width, aSize.height, aStride, alphaType);
   bitmap.setPixels(aData);
-  bitmap.setIsOpaque(isOpaque);
-  SkAutoTUnref<SkCanvas> canvas(new SkCanvas(new SkDevice(bitmap)));
+  SkAutoTUnref<SkCanvas> canvas(new SkCanvas(new SkBitmapDevice(bitmap)));
 
   mSize = aSize;
   mCanvas = canvas.get();
