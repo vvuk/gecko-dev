@@ -20,6 +20,7 @@
 #include "nsTraceRefcnt.h"              // for MOZ_COUNT_CTOR, etc
 
 namespace mozilla {
+
 namespace layers {
 
 class CompositableClient;

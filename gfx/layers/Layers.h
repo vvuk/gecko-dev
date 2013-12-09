@@ -62,6 +62,7 @@ class GLContext;
 
 namespace gfx {
 class DrawTarget;
+class SurfaceStream;
 }
 
 namespace css {
@@ -1758,6 +1759,8 @@ public:
       : mSurface(nullptr)
       , mDrawTarget(nullptr)
       , mGLContext(nullptr)
+      , mStream(nullptr)
+      , mTexID(0)
       , mSize(0,0)
       , mIsGLAlphaPremult(false)
     { }
@@ -1768,6 +1771,14 @@ public:
 
     // Or this, for GL.
     mozilla::gl::GLContext* mGLContext;
+
+#ifdef USE_SKIA_GPU
+    // Canvas/SkiaGL uses this
+    mozilla::gfx::SurfaceStream* mStream;
+
+    // ID of the texture backing the canvas layer (defaults to 0)
+    uint32_t mTexID;
+#endif
 
     // The size of the canvas content
     nsIntSize mSize;

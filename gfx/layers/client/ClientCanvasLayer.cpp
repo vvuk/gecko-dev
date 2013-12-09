@@ -41,6 +41,11 @@ ClientCanvasLayer::Initialize(const Data& aData)
 
   if (mGLContext) {
     GLScreenBuffer* screen = mGLContext->Screen();
+
+    SurfaceCaps caps = screen->Caps();
+    if (mStream)
+      caps = SurfaceCaps::ForRGBA();
+
     SurfaceStreamType streamType =
         SurfaceStream::ChooseGLStreamType(SurfaceStream::OffMainThread,
                                           screen->PreserveBuffer());
@@ -52,11 +57,11 @@ ClientCanvasLayer::Initialize(const Data& aData)
 
           if (!isCrossProcess) {
             // [Basic/OGL Layers, OMTC] WebGL layer init.
-            factory = SurfaceFactory_EGLImage::Create(mGLContext, screen->Caps());
+            factory = SurfaceFactory_EGLImage::Create(mGLContext, caps);
           } else {
             // [Basic/OGL Layers, OOPC] WebGL layer init. (Out Of Process Compositing)
 #ifdef MOZ_WIDGET_GONK
-            factory = new SurfaceFactory_Gralloc(mGLContext, screen->Caps(), ClientManager()->AsShadowForwarder());
+            factory = new SurfaceFactory_Gralloc(mGLContext, caps, ClientManager()->AsShadowForwarder());
 #else
             // we could do readback here maybe
             NS_NOTREACHED("isCrossProcess but not on native B2G!");
@@ -66,16 +71,28 @@ ClientCanvasLayer::Initialize(const Data& aData)
           // [Basic Layers, OMTC] WebGL layer init.
           // Well, this *should* work...
 #ifdef XP_MACOSX
-          factory = new SurfaceFactory_IOSurface(mGLContext, screen->Caps());
+          factory = new SurfaceFactory_IOSurface(mGLContext, caps);
 #else
-          factory = new SurfaceFactory_GLTexture(mGLContext, nullptr, screen->Caps());
+          factory = new SurfaceFactory_GLTexture(mGLContext, nullptr, caps);
 #endif
         }
       }
     }
 
     if (factory) {
-      screen->Morph(factory, streamType);
+      if (mStream) {
+        // We're using a stream other than the one in the default screen
+        mFactory = factory;
+
+        bool isOpaque = GetContentFlags() & CONTENT_OPAQUE;
+        mTextureSurface = SharedSurface_GLTexture::Create(mGLContext, mGLContext,
+                                                          mGLContext->GetGLFormats(),
+                                                          aData.mSize, !isOpaque, aData.mTexID);
+        SharedSurface* producer = mStream->SwapProducer(mFactory, aData.mSize);
+        NS_ASSERTION(producer, "Failed to create initial canvas surface");
+      } else {
+        screen->Morph(factory, streamType);
+      }
     }
   }
 }

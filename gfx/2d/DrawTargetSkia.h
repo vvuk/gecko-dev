@@ -112,6 +112,7 @@ public:
 
   void SetCacheLimits(int aCount, int aSizeInBytes);
   void PurgeCaches();
+  uint32_t GetTextureID() const { return mTexture; }
 
   static void SetGlobalCacheLimits(int aCount, int aSizeInBytes);
   static void RebalanceCacheLimits();
@@ -138,6 +139,8 @@ private:
 
   static int sTextureCacheCount;
   static int sTextureCacheSizeInBytes;
+
+  uint32_t mTexture;
 #endif
 
   IntSize mSize;

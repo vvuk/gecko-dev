@@ -188,7 +188,18 @@ DeprecatedCanvasClientSurfaceStream::Update(gfx::IntSize aSize, ClientCanvasLaye
   mDeprecatedTextureClient->EnsureAllocated(aSize, GFX_CONTENT_COLOR);
 
   GLScreenBuffer* screen = aLayer->mGLContext->Screen();
-  SurfaceStream* stream = screen->Stream();
+  SurfaceStream* stream = nullptr;
+
+#ifdef USE_SKIA_GPU
+  if (aLayer->mStream) {
+    stream = aLayer->mStream;
+    stream->CopySurfaceToProducer(aLayer->mTextureSurface, aLayer->mFactory);
+    stream->SwapProducer(aLayer->mFactory, gfxIntSize(aSize.width, aSize.height));
+  } else 
+#endif
+  {
+    stream = screen->Stream();
+  }
 
   bool isCrossProcess = !(XRE_GetProcessType() == GeckoProcessType_Default);
   if (isCrossProcess) {

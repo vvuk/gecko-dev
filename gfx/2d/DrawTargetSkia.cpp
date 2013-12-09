@@ -782,17 +782,20 @@ DrawTargetSkia::InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
   mSize = aSize;
   mFormat = aFormat;
 
-  GrBackendRenderTargetDesc targetDescriptor;
+  GrTextureDesc targetDescriptor;
 
+  targetDescriptor.fFlags = kRenderTarget_GrTextureFlagBit;
   targetDescriptor.fWidth = mSize.width;
   targetDescriptor.fHeight = mSize.height;
   targetDescriptor.fConfig = GfxFormatToGrConfig(mFormat);
   targetDescriptor.fOrigin = kBottomLeft_GrSurfaceOrigin;
   targetDescriptor.fSampleCnt = 0;
-  targetDescriptor.fRenderTargetHandle = 0; // GLContext always exposes the right framebuffer as id 0
 
-  SkAutoTUnref<GrRenderTarget> target(mGrContext->wrapBackendRenderTarget(targetDescriptor));
-  SkAutoTUnref<SkGpuDevice> device(new SkGpuDevice(mGrContext.get(), target.get()));
+  SkAutoTUnref<GrTexture> skiaTexture(mGrContext->createUncachedTexture(targetDescriptor, NULL, 0));
+
+  mTexture = (uint32_t)skiaTexture->getTextureHandle();
+
+  SkAutoTUnref<SkDevice> device(new SkGpuDevice(mGrContext.get(), skiaTexture->asRenderTarget()));
   SkAutoTUnref<SkCanvas> canvas(new SkCanvas(device.get()));
   mCanvas = canvas.get();
 

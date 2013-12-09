@@ -50,6 +50,8 @@ public:
     const SurfaceStreamType mType;
 
     mozilla::gl::GLContext* GLContext() const { return mGLContext; }
+
+
 protected:
     // |mProd| is owned by us, but can be ripped away when
     // creating a new GLStream from this one.
@@ -120,6 +122,8 @@ public:
                                         const gfxIntSize& size) = 0;
 
     virtual SharedSurface* Resize(SurfaceFactory* factory, const gfxIntSize& size);
+
+    virtual void CopySurfaceToProducer(SharedSurface* src, SurfaceFactory* factory) { MOZ_ASSERT(0); }
 
 protected:
     // SwapCons will return the same surface more than once,
@@ -192,7 +196,9 @@ protected:
 public:
     SurfaceStream_TripleBuffer(SurfaceStream* prevStream);
     virtual ~SurfaceStream_TripleBuffer();
+    virtual void CopySurfaceToProducer(SharedSurface* src, SurfaceFactory* factory);
 
+    virtual SharedSurface* Resize(SurfaceFactory* factory, const gfxIntSize& size);
 private:
     // Common constructor code.
     void Init(SurfaceStream* prevStream);

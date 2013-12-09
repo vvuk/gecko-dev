@@ -313,15 +313,24 @@ SharedSurface_GLTexture::Create(GLContext* prodGL,
                              GLContext* consGL,
                              const GLFormats& formats,
                              const gfxIntSize& size,
-                             bool hasAlpha)
+                             bool hasAlpha,
+                             GLuint texture)
 {
     MOZ_ASSERT(prodGL);
     MOZ_ASSERT(!consGL || prodGL->SharesWith(consGL));
 
     prodGL->MakeCurrent();
-    GLuint tex = CreateTextureForOffscreen(prodGL, formats, size);
 
-    return new SharedSurface_GLTexture(prodGL, consGL, size, hasAlpha, tex);
+    GLuint tex = texture;
+
+    bool ownsTex = false;
+
+    if (!tex) {
+      tex = CreateTextureForOffscreen(prodGL, formats, size);
+      ownsTex = true;
+    }
+
+    return new SharedSurface_GLTexture(prodGL, consGL, size, hasAlpha, tex, ownsTex);
 }
 
 SharedSurface_GLTexture::~SharedSurface_GLTexture()
@@ -329,8 +338,10 @@ SharedSurface_GLTexture::~SharedSurface_GLTexture()
     if (!mGL->MakeCurrent())
         return;
 
-    GLuint tex = mTex;
-    mGL->fDeleteTextures(1, &tex);
+    if (mOwnsTex) {
+        GLuint tex = mTex;
+        mGL->fDeleteTextures(1, &tex);
+    }
 
     if (mSync) {
         mGL->fDeleteSync(mSync);

@@ -189,7 +189,8 @@ public:
                                            GLContext* consGL,
                                            const GLFormats& formats,
                                            const gfxIntSize& size,
-                                           bool hasAlpha);
+                                           bool hasAlpha,
+                                           GLuint texture = 0);
 
     static SharedSurface_GLTexture* Cast(SharedSurface* surf) {
         MOZ_ASSERT(surf->Type() == SharedSurfaceType::GLTextureShare);
@@ -200,6 +201,7 @@ public:
 protected:
     GLContext* mConsGL;
     const GLuint mTex;
+    const bool mOwnsTex;
     GLsync mSync;
     mutable Mutex mMutex;
 
@@ -207,7 +209,8 @@ protected:
                             GLContext* consGL,
                             const gfxIntSize& size,
                             bool hasAlpha,
-                            GLuint tex)
+                            GLuint tex,
+                            bool ownsTex)
         : SharedSurface_GL(SharedSurfaceType::GLTextureShare,
                            AttachmentType::GLTexture,
                            prodGL,
@@ -215,6 +218,7 @@ protected:
                            hasAlpha)
         , mConsGL(consGL)
         , mTex(tex)
+        , mOwnsTex(ownsTex)
         , mSync(0)
         , mMutex("SharedSurface_GLTexture mutex")
     {

@@ -946,6 +946,11 @@ public:
   {
     MOZ_CRASH();
   }
+
+  virtual uint32_t GetTextureID() const
+  {
+    MOZ_CRASH();
+  }
 #endif
 
 protected:

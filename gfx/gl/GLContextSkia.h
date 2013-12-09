@@ -29,9 +29,9 @@ public:
     GLContext* GetGLContext() const { return mGLContext.get(); }
     GrContext* GetGrContext() const { return mGrContext.get(); }
 private:
-    RefPtr<GLContext> mGLContext;
-    SkRefPtr<GrGLInterface> mGrGLInterface;
     SkRefPtr<GrContext> mGrContext;
+    SkRefPtr<GrGLInterface> mGrGLInterface;
+    RefPtr<GLContext> mGLContext;
 };
 
 }
