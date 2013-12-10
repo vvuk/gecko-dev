@@ -2039,26 +2039,31 @@ gfxPlatform::GetScreenDepth() const
 mozilla::gfx::SurfaceFormat
 gfxPlatform::Optimal2DFormatForContent(gfxContentType aContent)
 {
+  bool wantRGB = false;
+  if (UseSkiaGLContent()) {
+    wantRGB = true;
+  }
+
   switch (aContent) {
   case GFX_CONTENT_COLOR:
     switch (GetOffscreenFormat()) {
     case gfxImageFormatARGB32:
-      return mozilla::gfx::FORMAT_B8G8R8A8;
+      return wantRGB ? mozilla::gfx::FORMAT_R8G8B8A8 : mozilla::gfx::FORMAT_B8G8R8A8;
     case gfxImageFormatRGB24:
-      return mozilla::gfx::FORMAT_B8G8R8X8;
+      return wantRGB ? mozilla::gfx::FORMAT_R8G8B8X8 : mozilla::gfx::FORMAT_B8G8R8X8;
     case gfxImageFormatRGB16_565:
       return mozilla::gfx::FORMAT_R5G6B5;
     default:
       NS_NOTREACHED("unknown gfxImageFormat for GFX_CONTENT_COLOR");
-      return mozilla::gfx::FORMAT_B8G8R8A8;
+      return wantRGB ? mozilla::gfx::FORMAT_R8G8B8A8 : mozilla::gfx::FORMAT_B8G8R8A8;
     }
   case GFX_CONTENT_ALPHA:
     return mozilla::gfx::FORMAT_A8;
   case GFX_CONTENT_COLOR_ALPHA:
-    return mozilla::gfx::FORMAT_B8G8R8A8;
+    return wantRGB ? mozilla::gfx::FORMAT_R8G8B8A8 : mozilla::gfx::FORMAT_B8G8R8A8;
   default:
     NS_NOTREACHED("unknown gfxContentType");
-    return mozilla::gfx::FORMAT_B8G8R8A8;
+    return wantRGB ? mozilla::gfx::FORMAT_R8G8B8A8 : mozilla::gfx::FORMAT_B8G8R8A8;
   }
 }
 

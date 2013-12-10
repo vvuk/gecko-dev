@@ -49,6 +49,15 @@ struct SurfaceDescriptorMacIOSurface {
   bool hasAlpha;
 };
 
+// A direct GL texture from the global share
+// pool, for where we have GL context sharing
+struct SurfaceDescriptorSharedGLTexture {
+  uint32_t texture;
+  SurfaceFormat format;
+  IntSize size;
+  bool flipped; // y-flip?
+};
+
 struct SharedTextureDescriptor {
   SharedTextureShareType shareType;
   SharedTextureHandle handle;
@@ -181,6 +190,7 @@ union SurfaceDescriptor {
   Shmem;                      // XXX - deprecated
   RGBImage;                   // XXX - deprecated
   MemoryImage;                // XXX - deprecated
+  SurfaceDescriptorSharedGLTexture;
   null_t;
 };
 

@@ -83,8 +83,13 @@ ShadowLayerForwarder::PlatformSyncBeforeUpdate()
 }
 
 bool
-ISurfaceAllocator::PlatformDestroySharedSurface(SurfaceDescriptor*)
+ISurfaceAllocator::PlatformDestroySharedSurface(SurfaceDescriptor *aDesc)
 {
+  if (aDesc->type() == SurfaceDescriptor::TSurfaceDescriptorSharedGLTexture) {
+    // nothing to do
+    return true;
+  }
+
   return false;
 }
 

@@ -223,6 +223,14 @@ CompositableClient::CreateTextureClientForDrawing(SurfaceFormat aFormat,
     }
   }
 #endif
+
+  if (!result &&
+      parentBackend == LAYERS_OPENGL &&
+      gfxPlatform::GetPlatform()->UseSkiaGLContent())
+  {
+    result = new SkiaGLSharedTextureClientOGL(aFormat, aTextureFlags);
+  }
+
   // Can't do any better than a buffer texture client.
   if (!result) {
     result = CreateBufferTextureClient(aFormat, aTextureFlags);

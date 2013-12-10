@@ -39,6 +39,8 @@
 #endif
 #include "GeckoProfiler.h"
 
+#include "GLContextSkia.h"
+
 using namespace mozilla::gl;
 using namespace mozilla::gfx;
 
@@ -109,6 +111,16 @@ CreateTextureHostOGL(const SurfaceDescriptor& aDesc,
                                         desc.inverted());
       break;
     }
+    case SurfaceDescriptor::TSurfaceDescriptorSharedGLTexture: {
+      const SurfaceDescriptorSharedGLTexture& desc = aDesc.get_SurfaceDescriptorSharedGLTexture();
+      result = new SkiaGLSharedTextureHostOGL(aFlags,
+                                              desc.size(),
+                                              desc.format(),
+                                              desc.texture(),
+                                              nullptr,
+                                              desc.flipped());
+      break;
+    } 
 #ifdef XP_MACOSX
     case SurfaceDescriptor::TSurfaceDescriptorMacIOSurface: {
       const SurfaceDescriptorMacIOSurface& desc =
@@ -1395,6 +1407,146 @@ GrallocDeprecatedTextureHostOGL::GetAsSurface() {
   return surf.forget();
 }
 #endif // MOZ_WIDGET_GONK
+
+////
+
+SkiaGLSharedTextureSourceOGL::SkiaGLSharedTextureSourceOGL(CompositorOGL* aCompositor,
+                                                           gfx::IntSize aSize,
+                                                           gfx::SurfaceFormat aFormat,
+                                                           GLuint aTextureID,
+                                                           GLenum aWrapMode,
+                                                           bool aDoFlip)
+  : mCompositor(aCompositor)
+  , mSize(aSize)
+  , mFormat(aFormat)
+  , mTextureID(aTextureID)
+  , mWrapMode(aWrapMode)
+  , mDoFlip(aDoFlip)
+{
+}
+
+void
+SkiaGLSharedTextureSourceOGL::BindTexture(GLenum activetex)
+{
+  if (!gl()) {
+    NS_WARNING("Trying to bind a texture without a GLContext");
+    return;
+  }
+
+  gl()->fActiveTexture(activetex);
+  gl()->fBindTexture(LOCAL_GL_TEXTURE_2D, mTextureID);
+}
+
+gl::GLContext*
+SkiaGLSharedTextureSourceOGL::gl() const
+{
+  return mCompositor ? mCompositor->gl() : nullptr;
+}
+
+gfx3DMatrix
+SkiaGLSharedTextureSourceOGL::GetTextureTransform()
+{
+  gfx3DMatrix m;
+  if (mDoFlip) {
+    m.Translate(gfxPoint3D(0.0f, 1.0f, 0.0f));
+    m.Scale(1.0f, -1.0f, 1.0f);
+  }
+  return m;
+}
+
+SkiaGLSharedTextureHostOGL::SkiaGLSharedTextureHostOGL(TextureFlags aFlags,
+                                                       gfx::IntSize aSize,
+                                                       gfx::SurfaceFormat aFormat,
+                                                       GLuint aTextureID,
+                                                       void **aFenceSyncPtr,
+                                                       bool aFlip)
+  : TextureHost(aFlags)
+  , mSize(aSize)
+  , mFormat(aFormat)
+  , mTextureID(aTextureID)
+  , mFenceSyncPtr(aFenceSyncPtr)
+  , mDoFlip(aFlip)
+  , mCompositor(nullptr)
+{
+}
+
+SkiaGLSharedTextureHostOGL::~SkiaGLSharedTextureHostOGL()
+{
+  // nothing!
+}
+
+void
+SkiaGLSharedTextureHostOGL::SetCompositor(Compositor* aCompositor)
+{
+  CompositorOGL* glCompositor = static_cast<CompositorOGL*>(aCompositor);
+  mCompositor = glCompositor;
+}
+
+NewTextureSource*
+SkiaGLSharedTextureHostOGL::GetTextureSources()
+{
+  if (!mTextureSource) {
+    mTextureSource = new SkiaGLSharedTextureSourceOGL(mCompositor,
+                                                      mSize, mFormat,
+                                                      mTextureID,
+                                                      LOCAL_GL_CLAMP_TO_EDGE,
+                                                      mDoFlip);
+  }
+  return mTextureSource;
+}
+
+bool
+SkiaGLSharedTextureHostOGL::Lock()
+{
+  // XXX lock global process-wide mutex for this
+  // XXX wait for fence
+  return true;
+}
+
+void
+SkiaGLSharedTextureHostOGL::Unlock()
+{
+  // XXX Unlock global process-wide mutex for this
+}
+
+// This will delete a shared texture ID in use by SkiaGL
+// using the main thread's content renderer.
+class SkiaGLSharedTextureDeleter MOZ_FINAL : public nsRunnable
+{
+public:
+  explicit SkiaGLSharedTextureDeleter(GLuint aTextureID,
+                                      const gfx::IntSize& aSize,
+                                      const gfx::SurfaceFormat aFormat)
+    : mTextureID(aTextureID), mSize(aSize), mFormat(aFormat) { }
+
+  NS_IMETHOD Run() {
+    GLContextSkia *cxskia = gfxPlatform::GetPlatform()->GetContentGLContextSkia();
+    GLContext *gl = cxskia->GetGLContext();
+
+    // XXX note! We should really recycle this; this is why we kept size/format here.
+    gl->MakeCurrent();
+    gl->fDeleteTextures(1, &mTextureID);
+
+    return NS_OK;
+  }
+protected:
+  GLuint mTextureID;
+  gfx::IntSize mSize;
+  gfx::SurfaceFormat mFormat;
+};
+
+void
+SkiaGLSharedTextureHostOGL::DeallocateDeviceData()
+{
+  MOZ_ASSERT(mTextureID);
+
+  // dispatch the deleter to the main thread
+  nsCOMPtr<nsIRunnable> runnable = new SkiaGLSharedTextureDeleter(mTextureID, mSize, mFormat);
+  NS_DispatchToMainThread(runnable);
+
+  mTextureID = 0;
+  mTextureSource = nullptr;
+}
 
 } // namespace
 } // namespace

@@ -897,6 +897,95 @@ private:
 };
 #endif
 
+class SkiaGLSharedTextureHostOGL;
+class SkiaGLSharedTextureSourceOGL : public NewTextureSource
+                                   , public TextureSourceOGL
+{
+public:
+  SkiaGLSharedTextureSourceOGL(CompositorOGL* aCompositor,
+                               gfx::IntSize aSize,
+                               gfx::SurfaceFormat aFormat,
+                               GLuint aTextureID,
+                               GLenum aWrapMode,
+                               bool aDoFlip);
+
+  virtual TextureSourceOGL* AsSourceOGL() { return this; }
+
+  virtual gfx::IntSize GetSize() const MOZ_OVERRIDE { return mSize; }
+  virtual gfx::SurfaceFormat GetFormat() const MOZ_OVERRIDE { return mFormat; }
+  virtual GLenum GetTextureTarget() const { return LOCAL_GL_TEXTURE_2D; }
+  virtual GLenum GetWrapMode() const MOZ_OVERRIDE { return mWrapMode; }
+
+  virtual void BindTexture(GLenum activetex) MOZ_OVERRIDE;
+  virtual bool IsValid() const MOZ_OVERRIDE { /* when is it not? */ return true; }
+
+  virtual gfx3DMatrix GetTextureTransform() MOZ_OVERRIDE;
+
+  // doesn't own any data
+  virtual void DeallocateDeviceData() {}
+
+  void SetCompositor(CompositorOGL* aCompositor);
+
+  gl::GLContext* gl() const;
+
+protected:
+  friend class SkiaGLSharedTextureHostOGL;
+
+  CompositorOGL* mCompositor;
+
+  gfx::IntSize mSize;
+  gfx::SurfaceFormat mFormat;
+  GLuint mTextureID;
+  GLenum mWrapMode;
+  bool mDoFlip;
+};
+
+class SkiaGLSharedTextureHostOGL : public TextureHost
+{
+public:
+  SkiaGLSharedTextureHostOGL(TextureFlags aFlags,
+                             gfx::IntSize aSize,
+                             gfx::SurfaceFormat aFormat,
+                             GLuint aTextureID,
+                             void **aFenceSyncPtr,
+                             bool aFlip);
+
+  virtual ~SkiaGLSharedTextureHostOGL();
+
+  virtual void SetCompositor(Compositor* aCompositor) MOZ_OVERRIDE;
+
+  virtual bool Lock() MOZ_OVERRIDE;
+  virtual void Unlock() MOZ_OVERRIDE;
+
+  virtual gfx::IntSize GetSize() const MOZ_OVERRIDE { return mSize; }
+  virtual gfx::SurfaceFormat GetFormat() const MOZ_OVERRIDE { return mFormat; }
+
+  virtual NewTextureSource* GetTextureSources() MOZ_OVERRIDE;
+
+  virtual already_AddRefed<gfxImageSurface> GetAsSurface() MOZ_OVERRIDE
+  {
+    return nullptr; // XXX - implement this (for MOZ_DUMP_PAINTING)
+  }
+
+  virtual const char* Name() { return "SkiaGLSharedTextureHostOGL"; }
+
+  virtual void DeallocateDeviceData() MOZ_OVERRIDE;
+
+protected:
+  gfx::IntSize mSize;
+  gfx::SurfaceFormat mFormat;
+  GLuint mTextureID;
+  void **mFenceSyncPtr;
+  bool mDoFlip;
+
+  RefPtr<SkiaGLSharedTextureSourceOGL> mTextureSource;
+
+  CompositorOGL* mCompositor;
+};
+
+
+
+
 } // namespace
 } // namespace
 

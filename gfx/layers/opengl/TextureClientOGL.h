@@ -14,6 +14,12 @@
 #include "mozilla/layers/LayersSurfaces.h"  // for SurfaceDescriptor
 #include "mozilla/layers/TextureClient.h"  // for DeprecatedTextureClient, etc
 
+#ifdef USE_SKIA
+#include "skia/SkGraphics.h"
+#include "skia/GrContext.h"
+#include "skia/GrTexture.h"
+#endif
+
 namespace mozilla {
 namespace layers {
 
@@ -55,6 +61,43 @@ protected:
   gfx::IntSize mSize;
   gl::SharedTextureShareType mShareType;
   bool mInverted;
+};
+
+class SkiaGLSharedTextureClientOGL : public TextureClient
+                                   , public TextureClientDrawTarget
+{
+public:
+  SkiaGLSharedTextureClientOGL(gfx::SurfaceFormat aFormat,
+                               TextureFlags aFlags = TEXTURE_FLAGS_DEFAULT);
+  virtual ~SkiaGLSharedTextureClientOGL();
+
+  virtual TextureClientDrawTarget* AsTextureClientDrawTarget() MOZ_OVERRIDE { return this; }
+
+  bool Lock(OpenMode aMode) MOZ_OVERRIDE;
+  void Unlock() MOZ_OVERRIDE;
+
+  bool ImplementsLocking() const MOZ_OVERRIDE { return true; }
+  gfx::IntSize GetSize() const MOZ_OVERRIDE { return mSize; }
+  bool IsAllocated() const MOZ_OVERRIDE { return mSize.width != -1 && mSize.height != -1; }
+
+  bool ToSurfaceDescriptor(SurfaceDescriptor& aDescriptor) MOZ_OVERRIDE;
+
+  TextureClientData* DropTextureData() MOZ_OVERRIDE;
+
+  // TextureClientDrawTarget
+  TemporaryRef<gfx::DrawTarget> GetAsDrawTarget() MOZ_OVERRIDE;
+  gfx::SurfaceFormat GetFormat() const MOZ_OVERRIDE { return mFormat; }
+  bool AllocateForSurface(gfx::IntSize aSize,
+                          TextureAllocationFlags flags = ALLOC_DEFAULT) MOZ_OVERRIDE;
+
+protected:
+  gfx::SurfaceFormat mFormat;
+  gfx::IntSize mSize;
+  uint32_t mGLTextureID;
+
+  RefPtr<gfx::DrawTarget> mDrawTarget;
+
+  SkRefPtr<GrTexture> mSkiaTexture;
 };
 
 class DeprecatedTextureClientSharedOGL : public DeprecatedTextureClient
