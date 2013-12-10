@@ -43,7 +43,7 @@ struct gfxRGBA;
 
 namespace mozilla {
 namespace gl {
-class GLContext;
+class GLContextSkia;
 }
 namespace gfx {
 class DrawTarget;
@@ -283,6 +283,8 @@ public:
     virtual bool UseSkiaGLContent();
 
     virtual void InitializeSkiaCaches();
+
+    virtual mozilla::gl::GLContextSkia *GetContentGLContextSkia();
 
     void GetAzureBackendInfo(mozilla::widget::InfoObject &aObj) {
       aObj.DefineProperty("AzureCanvasBackend", GetBackendName(mPreferredCanvasBackend));
@@ -740,6 +742,8 @@ private:
     bool mDrawLayerBorders;
     bool mDrawTileBorders;
     bool mDrawBigImageBorders;
+
+    mozilla::RefPtr<mozilla::gl::GLContextSkia> mContentGLContextSkia;
 };
 
 #endif /* GFX_PLATFORM_H */

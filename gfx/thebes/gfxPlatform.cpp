@@ -77,6 +77,7 @@
 #ifdef USE_SKIA
 #include "mozilla/Hal.h"
 #include "skia/SkGraphics.h"
+#include "GLContextSkia.h"
 #endif
 
 #include "mozilla/Preferences.h"
@@ -963,6 +964,32 @@ gfxPlatform::InitializeSkiaCaches()
     Factory::SetGlobalSkiaCacheLimits(cacheItemLimit, cacheSizeLimit);
   }
 #endif
+}
+
+gl::GLContextSkia *
+gfxPlatform::GetContentGLContextSkia()
+{
+  if (!mContentGLContextSkia) {
+    nsRefPtr<gl::GLContext> contentContext;
+
+    if (PR_GetEnv("MOZ_LAYERS_PREFER_EGL")) {
+      contentContext = gl::GLContextProviderEGL::CreateOffscreen(gfxIntSize(16, 16),
+                                                                 SurfaceCaps::ForRGBA());
+    }
+
+    if (!contentContext) {
+      contentContext = gl::GLContextProvider::CreateOffscreen(gfxIntSize(16, 16),
+                                                              SurfaceCaps::ForRGBA());
+    }
+
+    if (!contentContext) {
+      return nullptr;
+    }
+
+    mContentGLContextSkia = new gl::GLContextSkia(contentContext);
+  }
+
+  return mContentGLContextSkia;
 }
 
 already_AddRefed<gfxASurface>
