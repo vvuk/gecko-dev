@@ -134,6 +134,8 @@ private:
 
   SkRect SkRectCoveringWholeSurface() const;
 
+  void LogMarker(const char *msg);
+
 #ifdef USE_SKIA_GPU
   RefPtr<GenericRefCountedBase> mGLContextSkia;
   SkRefPtr<GrContext> mGrContext;

@@ -33,6 +33,33 @@
 namespace mozilla {
 namespace gfx {
 
+#ifdef DEBUG
+// Use GREMEDY_string_marker if available to put some messages where
+// apitrace can see them
+#ifdef WIN32
+typedef void (__stdcall * StringMarkerFuncPtr)(int len, const char *msg);
+#else
+typedef void (* StringMarkerFuncPtr)(int len, const char *msg);
+#endif
+static StringMarkerFuncPtr gStringMarkerFunction = nullptr;
+static void LogMarkerStatic(const char *msg) {
+  if (gStringMarkerFunction) {
+    gStringMarkerFunction(0, msg);
+  }
+}
+
+void
+DrawTargetSkia::LogMarker(const char *msg) {
+  if (gStringMarkerFunction) {
+    Flush();
+    gStringMarkerFunction(0, msg);
+  }
+}
+#else
+static void LogMarkerStatic(const char *) {}
+void DrawTargetSkia::LogMarker(const char *) {}
+#endif
+
 class GradientStopsSkia : public GradientStops
 {
 public:
@@ -205,6 +232,7 @@ void SetPaintPattern(SkPaint& aPaint, const Pattern& aPattern, Float aAlpha = 1.
 {
   switch (aPattern.GetType()) {
     case PATTERN_COLOR: {
+      LogMarkerStatic("COLOR pattern");
       Color color = static_cast<const ColorPattern&>(aPattern).mColor;
       aPaint.setColor(ColorToSkColor(color, aAlpha));
       break;
@@ -226,13 +254,17 @@ void SetPaintPattern(SkPaint& aPaint, const Pattern& aPattern, Float aAlpha = 1.
                                                           mode);
 
         if (shader) {
+            LogMarkerStatic("LINEAR_GRADIENT pattern, shader ok");
             SkMatrix mat;
             GfxMatrixToSkiaMatrix(pat.mMatrix, mat);
             shader->setLocalMatrix(mat);
             SkSafeUnref(aPaint.setShader(shader));
+        } else {
+            LogMarkerStatic("LINEAR_GRADIENT pattern, NO SHADER ???");
         }
 
       } else {
+        LogMarkerStatic("LINEAR_GRADIENT pattern with mCount < 2 (transparent black)");
         aPaint.setColor(SkColorSetARGB(0, 0, 0, 0));
       }
       break;
@@ -256,13 +288,17 @@ void SetPaintPattern(SkPaint& aPaint, const Pattern& aPattern, Float aAlpha = 1.
                                                                    stops->mCount, 
                                                                    mode);
         if (shader) {
+            LogMarkerStatic("RADIAL_GRADIENT pattern, shader ok");
             SkMatrix mat;
             GfxMatrixToSkiaMatrix(pat.mMatrix, mat);
             shader->setLocalMatrix(mat);
             SkSafeUnref(aPaint.setShader(shader));
+        } else {
+            LogMarkerStatic("RADIAL_GRADIENT pattern, NO SHADER ???");
         }
 
       } else {
+        LogMarkerStatic("RADIAL_GRADIENT pattern with mCount < 2 (transparent black)");
         aPaint.setColor(SkColorSetARGB(0, 0, 0, 0));
       }
       break;
@@ -280,6 +316,8 @@ void SetPaintPattern(SkPaint& aPaint, const Pattern& aPattern, Float aAlpha = 1.
       if (pat.mFilter == FILTER_POINT) {
         aPaint.setFilterBitmap(false);
       }
+
+      LogMarkerStatic("SURFACE pattern");
       break;
     }
   }
@@ -356,11 +394,15 @@ DrawTargetSkia::DrawSurface(SourceSurface *aSurface,
                             const DrawSurfaceOptions &aSurfOptions,
                             const DrawOptions &aOptions)
 {
+  LogMarker(">> DrawSurface");
+
   if (!(aSurface->GetType() == SURFACE_SKIA || aSurface->GetType() == SURFACE_DATA)) {
+    LogMarker("<< DrawSurface (not SKIA||DATA)");
     return;
   }
 
   if (aSource.IsEmpty()) {
+    LogMarker("<< DrawSurface (Is Empty)");
     return;
   }
 
@@ -403,6 +445,8 @@ DrawTargetSkia::DrawSurface(SourceSurface *aSurface,
   if (!integerAligned) {
     mCanvas->restore();
   }
+
+  LogMarker("<< DrawSurface");
 }
 
 void
@@ -423,6 +467,7 @@ DrawTargetSkia::DrawSurfaceWithShadow(SourceSurface *aSurface,
                                       Float aSigma,
                                       CompositionOp aOperator)
 {
+  LogMarker(">> DrawSurfaceWithShadow");
   MarkChanged();
   mCanvas->save(SkCanvas::kMatrix_SaveFlag);
   mCanvas->resetMatrix();
@@ -477,6 +522,7 @@ DrawTargetSkia::DrawSurfaceWithShadow(SourceSurface *aSurface,
                                   Float(bitmap.width()), Float(bitmap.height())));
   mCanvas->drawRect(rect, paint);
   mCanvas->restore();
+  LogMarker("<< DrawSurfaceWithShadow");
 }
 
 void
@@ -484,11 +530,13 @@ DrawTargetSkia::FillRect(const Rect &aRect,
                          const Pattern &aPattern,
                          const DrawOptions &aOptions)
 {
+  LogMarker(">> FillRect");
   MarkChanged();
   SkRect rect = RectToSkRect(aRect);
   AutoPaintSetup paint(mCanvas.get(), aOptions, aPattern);
 
   mCanvas->drawRect(rect, paint.mPaint);
+  LogMarker("<< FillRect");
 }
 
 void
@@ -497,6 +545,7 @@ DrawTargetSkia::Stroke(const Path *aPath,
                        const StrokeOptions &aStrokeOptions,
                        const DrawOptions &aOptions)
 {
+  LogMarker(">> Stroke");
   MarkChanged();
   MOZ_ASSERT(aPath, "Null path");
   if (aPath->GetBackendType() != BACKEND_SKIA) {
@@ -508,10 +557,12 @@ DrawTargetSkia::Stroke(const Path *aPath,
 
   AutoPaintSetup paint(mCanvas.get(), aOptions, aPattern);
   if (!StrokeOptionsToPaint(paint.mPaint, aStrokeOptions)) {
+    LogMarker("<< Stroke (nothing to do)");
     return;
   }
 
   mCanvas->drawPath(skiaPath->GetPath(), paint.mPaint);
+  LogMarker("<< Stroke");
 }
 
 void
@@ -520,13 +571,16 @@ DrawTargetSkia::StrokeRect(const Rect &aRect,
                            const StrokeOptions &aStrokeOptions,
                            const DrawOptions &aOptions)
 {
+  LogMarker(">> StrokeRect");
   MarkChanged();
   AutoPaintSetup paint(mCanvas.get(), aOptions, aPattern);
   if (!StrokeOptionsToPaint(paint.mPaint, aStrokeOptions)) {
+    LogMarker("<< StrokeRect (nothing to do)");
     return;
   }
 
   mCanvas->drawRect(RectToSkRect(aRect), paint.mPaint);
+  LogMarker("<< StrokeRect");
 }
 
 void 
@@ -536,15 +590,18 @@ DrawTargetSkia::StrokeLine(const Point &aStart,
                            const StrokeOptions &aStrokeOptions,
                            const DrawOptions &aOptions)
 {
+  LogMarker(">> StrokeLine");
   MarkChanged();
   AutoPaintSetup paint(mCanvas.get(), aOptions, aPattern);
   if (!StrokeOptionsToPaint(paint.mPaint, aStrokeOptions)) {
+    LogMarker("<< StrokeLine (nothing to do)");
     return;
   }
 
   mCanvas->drawLine(SkFloatToScalar(aStart.x), SkFloatToScalar(aStart.y), 
                     SkFloatToScalar(aEnd.x), SkFloatToScalar(aEnd.y), 
                     paint.mPaint);
+  LogMarker("<< StrokeLine");
 }
 
 void
@@ -552,16 +609,20 @@ DrawTargetSkia::Fill(const Path *aPath,
                     const Pattern &aPattern,
                     const DrawOptions &aOptions)
 {
-  MarkChanged();
+  LogMarker(">> Fill");
+
   if (aPath->GetBackendType() != BACKEND_SKIA) {
     return;
   }
 
+  MarkChanged();
   const PathSkia *skiaPath = static_cast<const PathSkia*>(aPath);
 
   AutoPaintSetup paint(mCanvas.get(), aOptions, aPattern);
 
   mCanvas->drawPath(skiaPath->GetPath(), paint.mPaint);
+
+  LogMarker("<< Fill");
 }
 
 void
@@ -571,6 +632,8 @@ DrawTargetSkia::FillGlyphs(ScaledFont *aFont,
                            const DrawOptions &aOptions,
                            const GlyphRenderingOptions *aRenderingOptions)
 {
+  LogMarker(">> FillGlyphs");
+
   MarkChanged();
 
   ScaledFontBase* skiaFont = static_cast<ScaledFontBase*>(aFont);
@@ -615,6 +678,7 @@ DrawTargetSkia::FillGlyphs(ScaledFont *aFont,
   }
 
   mCanvas->drawPosText(&indices.front(), aBuffer.mNumGlyphs*2, &offsets.front(), paint.mPaint);
+  LogMarker("<< FillGlyphs");
 }
 
 void
@@ -622,6 +686,7 @@ DrawTargetSkia::Mask(const Pattern &aSource,
                      const Pattern &aMask,
                      const DrawOptions &aOptions)
 {
+  LogMarker(">> Mask");
   MarkChanged();
   AutoPaintSetup paint(mCanvas.get(), aOptions, aSource);
 
@@ -633,6 +698,7 @@ DrawTargetSkia::Mask(const Pattern &aSource,
   SkSafeUnref(paint.mPaint.setRasterizer(raster));
 
   mCanvas->drawRect(SkRectCoveringWholeSurface(), paint.mPaint);
+  LogMarker("<< Mask");
 }
 
 void
@@ -716,6 +782,8 @@ DrawTargetSkia::CopySurface(SourceSurface *aSurface,
                             const IntRect& aSourceRect,
                             const IntPoint &aDestination)
 {
+  LogMarker(">> CopySurface");
+
   //TODO: We could just use writePixels() here if the sourceRect is the entire source
 
   if (aSurface->GetType() != SURFACE_SKIA) {
@@ -744,6 +812,8 @@ DrawTargetSkia::CopySurface(SourceSurface *aSurface,
 
   mCanvas->drawBitmapRect(bitmap, &source, dest, &paint);
   mCanvas->restore();
+
+  LogMarker("<< CopySurface");
 }
 
 bool
@@ -796,6 +866,23 @@ DrawTargetSkia::InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
   SkAutoTUnref<SkCanvas> canvas(new SkCanvas(device.get()));
   mCanvas = canvas.get();
 
+#ifdef DEBUG
+    // would be nice if Skia had this on GrGLInterface; maybe we should add it?
+  if (!gStringMarkerFunction) {
+#ifdef WIN32
+    // all this to avoid having to link with opengl32.dll
+    HMODULE hgl = LoadLibrary("opengl32.dll");
+    typedef void* (__stdcall * wglGetProcAddressPtr)(const char *);
+    wglGetProcAddressPtr gpa = (wglGetProcAddressPtr) GetProcAddress(hgl, "wglGetProcAddress");
+    gStringMarkerFunction = (StringMarkerFuncPtr) gpa("glStringMarkerGREMEDY");
+    FreeLibrary(hgl);
+#else
+    // XXX write me for non-win32
+    gStringMarkerFunction = nullptr;
+#endif
+  }
+#endif
+
   AddGLDrawTarget(this);
 }
 
@@ -846,6 +933,7 @@ DrawTargetSkia::CreatePathBuilder(FillRule aFillRule) const
 void
 DrawTargetSkia::ClearRect(const Rect &aRect)
 {
+  LogMarker(">> ClearRect");
   MarkChanged();
   SkPaint paint;
   mCanvas->save();
@@ -854,6 +942,7 @@ DrawTargetSkia::ClearRect(const Rect &aRect)
   paint.setXfermodeMode(SkXfermode::kSrc_Mode);
   mCanvas->drawPaint(paint);
   mCanvas->restore();
+  LogMarker("<< ClearRect");
 }
 
 void
@@ -866,6 +955,8 @@ DrawTargetSkia::PushClip(const Path *aPath)
   const PathSkia *skiaPath = static_cast<const PathSkia*>(aPath);
   mCanvas->save(SkCanvas::kClip_SaveFlag);
   mCanvas->clipPath(skiaPath->GetPath(), SkRegion::kIntersect_Op, true);
+
+  LogMarker(".. PushClip");
 }
 
 void
@@ -875,12 +966,16 @@ DrawTargetSkia::PushClipRect(const Rect& aRect)
 
   mCanvas->save(SkCanvas::kClip_SaveFlag);
   mCanvas->clipRect(rect, SkRegion::kIntersect_Op, true);
+
+  LogMarker(".. PushClipRect");
 }
 
 void
 DrawTargetSkia::PopClip()
 {
   mCanvas->restore();
+
+  LogMarker(".. PopClip");
 }
 
 TemporaryRef<GradientStops>
