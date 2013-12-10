@@ -892,17 +892,33 @@ gfxPlatform::SupportsAzureContentForDrawTarget(DrawTarget* aTarget)
 }
 
 bool
-gfxPlatform::UseAcceleratedSkiaCanvas()
+gfxPlatform::UseSkiaGLCanvas()
 {
-  return Preferences::GetBool("gfx.canvas.azure.accelerated", false) &&
+  return Preferences::GetBool("gfx.canvas.skiagl.enabled", false) &&
          mPreferredCanvasBackend == BACKEND_SKIA;
+}
+
+bool
+gfxPlatform::UseSkiaGLContent()
+{
+  static bool sUseSkiaGLContent;
+  static bool sUseSkiaGLContentPrefCached = false;
+
+  if (!sUseSkiaGLContentPrefCached) {
+    sUseSkiaGLContentPrefCached = true;
+    mozilla::Preferences::AddBoolVarCache(&sUseSkiaGLContent,
+                                          "gfx.content.skiagl.enabled", false);
+  }
+
+  return sUseSkiaGLContent &&
+         mContentBackend == BACKEND_SKIA;
 }
 
 void
 gfxPlatform::InitializeSkiaCaches()
 {
 #ifdef USE_SKIA_GPU
-  if (UseAcceleratedSkiaCanvas()) {
+  if (UseSkiaGLCanvas()) {
     bool usingDynamicCache = Preferences::GetBool("gfx.canvas.skiagl.dynamic-cache", false);
 
     int cacheItemLimit = Preferences::GetInt("gfx.canvas.skiagl.cache-items", 256);

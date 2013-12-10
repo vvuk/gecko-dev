@@ -58,12 +58,12 @@ function IsAzureSkia() {
   return enabled;
 }
 
-function IsAcceleratedSkia() {
+function IsSkiaGLCanvas() {
   var enabled = false;
 
   try {
     var props = Cc["@mozilla.org/gfx/info;1"].getService(SpecialPowers.Ci.nsIGfxInfo).getInfo();
-    enabled = props.AzureCanvasBackend == "skia" && props.AzureSkiaAccelerated;
+    enabled = props.AzureCanvasBackend == "skia" && props.AzureSkiaGLCanvas;
   } catch(e) { }
 
   return enabled;
@@ -6659,7 +6659,7 @@ isPixel(ctx, 98,48, 0,255,0,255, 0);
 
 function test_2d_gradient_radial_inside1() {
 
-if (IsAcceleratedSkia())
+if (IsSkiaGLCanvas())
   return;
 
 var canvas = document.getElementById('c240');

@@ -875,7 +875,7 @@ CanvasRenderingContext2D::EnsureTarget()
 
      if (layerManager) {
 #ifdef USE_SKIA_GPU
-      if (gfxPlatform::GetPlatform()->UseAcceleratedSkiaCanvas() && !mForceSoftware) {
+      if (gfxPlatform::GetPlatform()->UseSkiaGLCanvas() && !mForceSoftware) {
         DemoteOldestContextIfNecessary();
 
         nsCOMPtr<nsIGfxInfo> gfxInfo = do_GetService("@mozilla.org/gfx/info;1");

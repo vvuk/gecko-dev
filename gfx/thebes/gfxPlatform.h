@@ -278,13 +278,16 @@ public:
       return (1 << aType) & mContentBackendBitmask;
     }
 
-    virtual bool UseAcceleratedSkiaCanvas();
+    virtual bool UseSkiaGLCanvas();
+
+    virtual bool UseSkiaGLContent();
 
     virtual void InitializeSkiaCaches();
 
     void GetAzureBackendInfo(mozilla::widget::InfoObject &aObj) {
       aObj.DefineProperty("AzureCanvasBackend", GetBackendName(mPreferredCanvasBackend));
-      aObj.DefineProperty("AzureSkiaAccelerated", UseAcceleratedSkiaCanvas());
+      aObj.DefineProperty("AzureSkiaGLCanvas", UseSkiaGLCanvas());
+      aObj.DefineProperty("AzureSkiaGLContent", UseSkiaGLContent());
       aObj.DefineProperty("AzureFallbackCanvasBackend", GetBackendName(mFallbackCanvasBackend));
       aObj.DefineProperty("AzureContentBackend", GetBackendName(mContentBackend));
     }

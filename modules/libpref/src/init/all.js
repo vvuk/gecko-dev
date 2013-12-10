@@ -394,8 +394,6 @@ pref("gfx.content.azure.backends", "direct2d,cairo");
 #ifdef XP_MACOSX
 pref("gfx.content.azure.backends", "cg");
 pref("gfx.canvas.azure.backends", "cg");
-// Accelerated cg canvas where available (10.7+)
-pref("gfx.canvas.azure.accelerated", false);
 #else
 pref("gfx.canvas.azure.backends", "cairo");
 pref("gfx.content.azure.backends", "cairo");
@@ -408,6 +406,9 @@ pref("gfx.content.azure.backends", "cairo");
 #ifdef ANDROID
 pref("gfx.content.azure.backends", "cairo");
 #endif
+
+pref("gfx.canvas.skiagl.enabled", false);
+pref("gfx.content.skiagl.enabled", false);
 
 pref("gfx.work-around-driver-bugs", true);
 pref("gfx.prefer-mesa-llvmpipe", false);

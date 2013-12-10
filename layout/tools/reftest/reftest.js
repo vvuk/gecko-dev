@@ -586,10 +586,17 @@ function BuildConditionSandbox(aURL) {
     var info = gfxInfo.getInfo();
     sandbox.azureQuartz = info.AzureCanvasBackend == "quartz";
     sandbox.azureSkia = info.AzureCanvasBackend == "skia";
-    sandbox.azureSkiaGL = info.AzureSkiaAccelerated; // FIXME: assumes GL right now
+    sandbox.azureSkiaGL = info.AzureSkiaGLCanvas; // XXX: "azureSkiaGL" is deprecated, and refers to Canvas only
+    sandbox.azureSkiaGLCanvas = info.AzureSkiaGLCanvas;
+    sandbox.azureSkiaGLContent = info.AzureSkiaGLContent;
     // true if we are using the same Azure backend for rendering canvas and content
-    sandbox.contentSameGfxBackendAsCanvas = info.AzureContentBackend == info.AzureCanvasBackend
-                                            || (info.AzureContentBackend == "none" && info.AzureCanvasBackend == "cairo");
+    sandbox.contentSameGfxBackendAsCanvas = info.AzureContentBackend == info.AzureCanvasBackend;
+    // "none" content means cairo
+    if (info.AzureContentBackend == "none" && info.AzureCanvasBackend == "cairo")
+        sandbox.contentSameGfxBackendAsCanvas = true;
+    // if it's skia, make sure they're both skiagl or not
+    if (info.AzureCanvasBackend == "skia" && info.AzureCanvasBackend == "skia")
+        sandbox.contentSameGfxBackendAsCanvas = info.AzureSkiaGLCanvas == info.AzureSkiaGLContent;
 
     sandbox.layersGPUAccelerated =
       gWindowUtils.layerManagerType != "Basic";
