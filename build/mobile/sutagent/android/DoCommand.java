@@ -1560,6 +1560,14 @@ private void CancelNotification()
             }
         }
 
+
+
+        if (sRet == null || sRet.length() == 0) {
+            Log.e("SUTAgentAndroid", 
+                  "had to intervene for isDirectory " + sDir);
+            sRet = "FALSE";
+        }
+
         return(sRet);
         }
 

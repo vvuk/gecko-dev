@@ -388,7 +388,7 @@ class DeviceManagerSUT(DeviceManager):
     def dirExists(self, remotePath):
         ret = self._runCmds([{ 'cmd': 'isdir ' + remotePath }]).strip()
         if not ret:
-            raise DMError('Automation Error: DeviceManager isdir returned null')
+            raise DMError("Automation Error: DeviceManager 'isdir %s' returned null" % remotePath)
 
         return ret == 'TRUE'
 
