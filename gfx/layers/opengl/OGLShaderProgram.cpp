@@ -26,19 +26,20 @@ typedef ProgramProfileOGL::Argument Argument;
 void
 AddCommonArgs(ProgramProfileOGL& aProfile)
 {
-  aProfile.mUniforms.AppendElement(Argument("uLayerTransform"));
-  aProfile.mUniforms.AppendElement(Argument("uLayerQuadTransform"));
-  aProfile.mUniforms.AppendElement(Argument("uMatrixProj"));
+  aProfile.mKnownUniforms[KnownUniform::LayerTransform].mNameString = "uLayerTransform";
+  aProfile.mKnownUniforms[KnownUniform::LayerQuadTransform].mNameString = "uLayerQuadTransform";
+  aProfile.mKnownUniforms[KnownUniform::MatrixProj].mNameString = "uMatrixProj";
   aProfile.mHasMatrixProj = true;
-  aProfile.mUniforms.AppendElement(Argument("uRenderTargetOffset"));
+  aProfile.mKnownUniforms[KnownUniform::RenderTargetOffset].mNameString = "uRenderTargetOffset";
   aProfile.mAttributes.AppendElement(Argument("aVertexCoord"));
 }
+
 void
 AddCommonTextureArgs(ProgramProfileOGL& aProfile)
 {
-  aProfile.mUniforms.AppendElement(Argument("uLayerOpacity"));
-  aProfile.mUniforms.AppendElement(Argument("uTexture"));
-  aProfile.mUniforms.AppendElement(Argument("uTextureTransform"));
+  aProfile.mKnownUniforms[KnownUniform::LayerOpacity].mNameString = "uLayerOpacity";
+  aProfile.mKnownUniforms[KnownUniform::Texture].mNameString = "uTexture";
+  aProfile.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
   aProfile.mAttributes.AppendElement(Argument("aTexCoord"));
 }
 
@@ -163,7 +164,7 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
       result.mFragmentShaderString = sSolidColorLayerFS;
     }
     AddCommonArgs(result);
-    result.mUniforms.AppendElement(Argument("uRenderColor"));
+    result.mKnownUniforms[KnownUniform::RenderColor].mNameString = "uRenderColor";
     break;
   case YCbCrLayerProgramType:
     if (aMask == Mask2d) {
@@ -174,11 +175,11 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
       result.mFragmentShaderString = sYCbCrTextureLayerFS;
     }
     AddCommonArgs(result);
-    result.mUniforms.AppendElement(Argument("uLayerOpacity"));
-    result.mUniforms.AppendElement(Argument("uYTexture"));
-    result.mUniforms.AppendElement(Argument("uCbTexture"));
-    result.mUniforms.AppendElement(Argument("uCrTexture"));
-    result.mUniforms.AppendElement(Argument("uTextureTransform"));
+    result.mKnownUniforms[KnownUniform::LayerOpacity].mNameString = "uLayerOpacity";
+    result.mKnownUniforms[KnownUniform::YTexture].mNameString = "uYTexture";
+    result.mKnownUniforms[KnownUniform::CbTexture].mNameString = "uCbTexture";
+    result.mKnownUniforms[KnownUniform::CrTexture].mNameString = "uCrTexture";
+    result.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
     result.mAttributes.AppendElement(Argument("aTexCoord"));
     result.mTextureCount = 3;
     break;
@@ -191,10 +192,10 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
       result.mFragmentShaderString = sComponentPass1FS;
     }
     AddCommonArgs(result);
-    result.mUniforms.AppendElement(Argument("uLayerOpacity"));
-    result.mUniforms.AppendElement(Argument("uBlackTexture"));
-    result.mUniforms.AppendElement(Argument("uWhiteTexture"));
-    result.mUniforms.AppendElement(Argument("uTextureTransform"));
+    result.mKnownUniforms[KnownUniform::LayerOpacity].mNameString = "uLayerOpacity";
+    result.mKnownUniforms[KnownUniform::BlackTexture].mNameString = "uBlackTexture";
+    result.mKnownUniforms[KnownUniform::WhiteTexture].mNameString = "uWhiteTexture";
+    result.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
     result.mAttributes.AppendElement(Argument("aTexCoord"));
     result.mTextureCount = 2;
     break;
@@ -207,10 +208,10 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
       result.mFragmentShaderString = sComponentPass1RGBFS;
     }
     AddCommonArgs(result);
-    result.mUniforms.AppendElement(Argument("uLayerOpacity"));
-    result.mUniforms.AppendElement(Argument("uBlackTexture"));
-    result.mUniforms.AppendElement(Argument("uWhiteTexture"));
-    result.mUniforms.AppendElement(Argument("uTextureTransform"));
+    result.mKnownUniforms[KnownUniform::LayerOpacity].mNameString = "uLayerOpacity";
+    result.mKnownUniforms[KnownUniform::BlackTexture].mNameString = "uBlackTexture";
+    result.mKnownUniforms[KnownUniform::WhiteTexture].mNameString = "uWhiteTexture";
+    result.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
     result.mAttributes.AppendElement(Argument("aTexCoord"));
     result.mTextureCount = 2;
     break;
@@ -223,10 +224,10 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
       result.mFragmentShaderString = sComponentPass2FS;
     }
     AddCommonArgs(result);
-    result.mUniforms.AppendElement(Argument("uLayerOpacity"));
-    result.mUniforms.AppendElement(Argument("uBlackTexture"));
-    result.mUniforms.AppendElement(Argument("uWhiteTexture"));
-    result.mUniforms.AppendElement(Argument("uTextureTransform"));
+    result.mKnownUniforms[KnownUniform::LayerOpacity].mNameString = "uLayerOpacity";
+    result.mKnownUniforms[KnownUniform::BlackTexture].mNameString = "uBlackTexture";
+    result.mKnownUniforms[KnownUniform::WhiteTexture].mNameString = "uWhiteTexture";
+    result.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
     result.mAttributes.AppendElement(Argument("aTexCoord"));
     result.mTextureCount = 2;
     break;
@@ -239,10 +240,10 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
       result.mFragmentShaderString = sComponentPass2RGBFS;
     }
     AddCommonArgs(result);
-    result.mUniforms.AppendElement(Argument("uLayerOpacity"));
-    result.mUniforms.AppendElement(Argument("uBlackTexture"));
-    result.mUniforms.AppendElement(Argument("uWhiteTexture"));
-    result.mUniforms.AppendElement(Argument("uTextureTransform"));
+    result.mKnownUniforms[KnownUniform::LayerOpacity].mNameString = "uLayerOpacity";
+    result.mKnownUniforms[KnownUniform::BlackTexture].mNameString = "uBlackTexture";
+    result.mKnownUniforms[KnownUniform::WhiteTexture].mNameString = "uWhiteTexture";
+    result.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
     result.mAttributes.AppendElement(Argument("aTexCoord"));
     result.mTextureCount = 2;
     break;
@@ -250,8 +251,8 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
     NS_ASSERTION(!aMask, "Program does not have masked variant.");
     result.mVertexShaderString = sCopyVS;
     result.mFragmentShaderString = sCopy2DFS;
-    result.mUniforms.AppendElement(Argument("uTexture"));
-    result.mUniforms.AppendElement(Argument("uTextureTransform"));
+    result.mKnownUniforms[KnownUniform::Texture].mNameString = "uTexture";
+    result.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
     result.mAttributes.AppendElement(Argument("aVertexCoord"));
     result.mAttributes.AppendElement(Argument("aTexCoord"));
     result.mTextureCount = 1;
@@ -260,8 +261,8 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
     NS_ASSERTION(!aMask, "Program does not have masked variant.");
     result.mVertexShaderString = sCopyVS;
     result.mFragmentShaderString = sCopy2DRectFS;
-    result.mUniforms.AppendElement(Argument("uTexture"));
-    result.mUniforms.AppendElement(Argument("uTextureTransform"));
+    result.mKnownUniforms[KnownUniform::Texture].mNameString = "uTexture";
+    result.mKnownUniforms[KnownUniform::TextureTransform].mNameString = "uTextureTransform";
     result.mAttributes.AppendElement(Argument("aVertexCoord"));
     result.mAttributes.AppendElement(Argument("aTexCoord"));
     result.mTextureCount = 1;
@@ -271,8 +272,8 @@ ProgramProfileOGL::GetProfileFor(ShaderProgramType aType,
   }
 
   if (aMask > MaskNone) {
-    result.mUniforms.AppendElement(Argument("uMaskTexture"));
-    result.mUniforms.AppendElement(Argument("uMaskQuadTransform"));
+    result.mKnownUniforms[KnownUniform::MaskTexture].mNameString = "uMaskTexture";
+    result.mKnownUniforms[KnownUniform::MaskQuadTransform].mNameString = "uMaskQuadTransform";
     result.mTextureCount += 1;
   }
 
@@ -317,16 +318,24 @@ ShaderProgramOGL::Initialize()
 
   mProgramState = STATE_OK;
 
-  for (uint32_t i = 0; i < mProfile.mUniforms.Length(); ++i) {
-    mProfile.mUniforms[i].mLocation =
-      mGL->fGetUniformLocation(mProgram, mProfile.mUniforms[i].mName);
-    NS_ASSERTION(mProfile.mUniforms[i].mLocation >= 0, "Bad uniform location.");
+  for (uint32_t i = 0; i < KnownUniform::KnownUniformCount; ++i) {
+    KnownUniform &ku(mProfile.mKnownUniforms[i]);
+
+    if (!ku.mNameString)
+      continue;
+
+    ku.mLocation = mGL->fGetUniformLocation(mProgram, ku.mNameString);
+    NS_ASSERTION(ku.mLocation >= 0, "Bad uniform location.");
+
+    // blarg
+    ku.mName = (KnownUniform::KnownUniformName) i;
   }
 
   for (uint32_t i = 0; i < mProfile.mAttributes.Length(); ++i) {
-    mProfile.mAttributes[i].mLocation =
-      mGL->fGetAttribLocation(mProgram, mProfile.mAttributes[i].mName);
-    NS_ASSERTION(mProfile.mAttributes[i].mLocation >= 0, "Bad attribute location.");
+    GLint loc = mGL->fGetAttribLocation(mProgram, mProfile.mAttributes[i].mName);
+    NS_ASSERTION(loc >= 0, "Bad attribute location.");
+
+    mProfile.mAttributes[i].mLocation = loc;
   }
 
   // this is a one-off that's present in the 2DRect versions of some shaders.
@@ -454,77 +463,6 @@ ShaderProgramOGL::Activate()
     SetProjectionMatrix(mProjectionMatrix);
   }
 }
-
-
-void
-ShaderProgramOGL::SetUniform(GLint aLocation, float aFloatValue)
-{
-  ASSERT_THIS_PROGRAM;
-  NS_ASSERTION(aLocation >= 0, "Invalid location");
-
-  mGL->fUniform1f(aLocation, aFloatValue);
-}
-
-void
-ShaderProgramOGL::SetUniform(GLint aLocation, const gfxRGBA& aColor)
-{
-  ASSERT_THIS_PROGRAM;
-  NS_ASSERTION(aLocation >= 0, "Invalid location");
-
-  mGL->fUniform4f(aLocation, float(aColor.r), float(aColor.g), float(aColor.b), float(aColor.a));
-}
-
-void
-ShaderProgramOGL::SetUniform(GLint aLocation, int aLength, float *aFloatValues)
-{
-  ASSERT_THIS_PROGRAM;
-  NS_ASSERTION(aLocation >= 0, "Invalid location");
-
-  if (aLength == 1) {
-    mGL->fUniform1fv(aLocation, 1, aFloatValues);
-  } else if (aLength == 2) {
-    mGL->fUniform2fv(aLocation, 1, aFloatValues);
-  } else if (aLength == 3) {
-    mGL->fUniform3fv(aLocation, 1, aFloatValues);
-  } else if (aLength == 4) {
-    mGL->fUniform4fv(aLocation, 1, aFloatValues);
-  } else {
-    NS_NOTREACHED("Bogus aLength param");
-  }
-}
-
-void
-ShaderProgramOGL::SetUniform(GLint aLocation, GLint aIntValue)
-{
-  ASSERT_THIS_PROGRAM;
-  NS_ASSERTION(aLocation >= 0, "Invalid location");
-
-  mGL->fUniform1i(aLocation, aIntValue);
-}
-
-void
-ShaderProgramOGL::SetMatrixUniform(GLint aLocation, const gfx3DMatrix& aMatrix)
-{
-  SetMatrixUniform(aLocation, &aMatrix._11);
-}
-
-void
-ShaderProgramOGL::SetMatrixUniform(GLint aLocation, const float *aFloatValues)
-{
-  ASSERT_THIS_PROGRAM;
-  NS_ASSERTION(aLocation >= 0, "Invalid location");
-
-  mGL->fUniformMatrix4fv(aLocation, 1, false, aFloatValues);
-}
-
-void
-ShaderProgramOGL::SetUniform(GLint aLocation, const gfx::Color& aColor) {
-  ASSERT_THIS_PROGRAM;
-  NS_ASSERTION(aLocation >= 0, "Invalid location");
-
-  mGL->fUniform4f(aLocation, float(aColor.r), float(aColor.g), float(aColor.b), float(aColor.a));
-}
-
 
 } /* layers */
 } /* mozilla */
