@@ -40,6 +40,8 @@ LOCAL_INCLUDES += [
     'trunk/src/sfnt',
     'trunk/src/utils',
     'trunk/src/utils/android',
+    'trunk/src/utils/win',
+    'trunk/src/utils/mac',
 ]
 
 DEFINES['SK_A32_SHIFT'] = 24
@@ -53,8 +55,13 @@ if CONFIG['MOZ_WIDGET_TOOLKIT'] in ('android', 'gtk2', 'gtk3', 'gonk', 'cocoa'):
 if CONFIG['INTEL_ARCHITECTURE'] and CONFIG['HAVE_TOOLCHAIN_SUPPORT_MSSSE3']:
     DEFINES['SK_BUILD_SSSE3'] = 1
 
-DEFINES['SK_FONTHOST_DOES_NOT_USE_FONTMGR'] = 1
+if (CONFIG['MOZ_WIDGET_TOOLKIT'] == 'android') or \
+   (CONFIG['MOZ_WIDGET_TOOLKIT'] == 'cocoa') or \
+   CONFIG['MOZ_WIDGET_GTK']:
+    DEFINES['SK_FONTHOST_DOES_NOT_USE_FONTMGR'] = 1
 
+DEFINES['SKIA_DLL'] = 1
+DEFINES['SKIA_IMPLEMENTATION'] = 1
 """
 
 import json
@@ -106,6 +113,7 @@ def generate_separated_sources(platform_sources):
     'SkImageDecoder',
     'SkImageEncoder',
     'SkBitmapHasher',
+    'SkWGL',
   ]
 
   def isblacklisted(value):
