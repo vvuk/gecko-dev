@@ -10,6 +10,16 @@
 
 #include <vector>
 
+#ifdef USE_SKIA
+class StreamFontFileLoader;
+SkTypeface*
+SkDirectWriteCreateTypefaceFromDWriteFont(IDWriteFontFace* fontFace,
+                                          IDWriteFont* font,
+                                          IDWriteFontFamily* fontFamily,
+                                          StreamFontFileLoader* fontFileLoader = NULL,
+                                          IDWriteFontCollectionLoader* fontCollectionLoader = NULL);
+#endif
+
 namespace mozilla {
 namespace gfx {
 
@@ -304,7 +314,34 @@ ScaledFontDWrite::ScaledFontDWrite(uint8_t *aData, uint32_t aSize,
   if (FAILED(factory->CreateFontFace(DWRITE_FONT_FACE_TYPE_TRUETYPE, 1, &ff, aIndex, DWRITE_FONT_SIMULATIONS_NONE, byRef(mFontFace)))) {
     gfxWarning() << "Failed to create font face from font file data!";
   }
+
+  CreateSkTypeface();
 }
+
+#ifdef USE_SKIA
+void
+ScaledFontDWrite::CreateSkTypeface()
+{
+  HRESULT hr;
+
+  IDWriteFactory *factory = DrawTargetD2D::GetDWriteFactory();
+
+  RefPtr<IDWriteFontCollection> systemFonts;
+  hr = factory->GetSystemFontCollection(byRef(systemFonts));
+  if (FAILED(hr)) return;
+
+  RefPtr<IDWriteFont> dwFont;
+  RefPtr<IDWriteFontFamily> dwFontFamily;
+
+  hr = systemFonts->GetFontFromFontFace(mFontFace, byRef(dwFont));
+  if (FAILED(hr)) return;
+
+  hr = dwFont->GetFontFamily(byRef(dwFontFamily));
+  if (FAILED(hr)) return;
+
+  mTypeface = SkDirectWriteCreateTypefaceFromDWriteFont(mFontFace, dwFont, dwFontFamily);
+}
+#endif
 
 TemporaryRef<Path>
 ScaledFontDWrite::GetPathForGlyphs(const GlyphBuffer &aBuffer, const DrawTarget *aTarget)

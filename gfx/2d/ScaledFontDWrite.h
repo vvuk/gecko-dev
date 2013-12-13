@@ -20,7 +20,10 @@ public:
   ScaledFontDWrite(IDWriteFontFace *aFont, Float aSize)
     : mFontFace(aFont)
     , ScaledFontBase(aSize)
-  {}
+  {
+    CreateSkTypeface();
+  }
+
   ScaledFontDWrite(uint8_t *aData, uint32_t aSize, uint32_t aIndex, Float aGlyphSize);
 
   virtual FontType GetType() const { return FONT_DWRITE; }
@@ -34,15 +37,11 @@ public:
 
   virtual AntialiasMode GetDefaultAAMode();
 
-#ifdef USE_SKIA
-  virtual SkTypeface* GetSkTypeface()
-  {
-    MOZ_ASSERT(false, "Skia and DirectWrite do not mix");
-    return nullptr;
-  }
-#endif
-
   RefPtr<IDWriteFontFace> mFontFace;
+protected:
+#ifdef USE_SKIA
+  void CreateSkTypeface();
+#endif
 };
 
 class GlyphRenderingOptionsDWrite : public GlyphRenderingOptions

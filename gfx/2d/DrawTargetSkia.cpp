@@ -568,12 +568,6 @@ DrawTargetSkia::FillGlyphs(ScaledFont *aFont,
                            const DrawOptions &aOptions,
                            const GlyphRenderingOptions *aRenderingOptions)
 {
-  if (aFont->GetType() != FONT_MAC &&
-      aFont->GetType() != FONT_SKIA &&
-      aFont->GetType() != FONT_GDI) {
-    return;
-  }
-
   MarkChanged();
 
   ScaledFontBase* skiaFont = static_cast<ScaledFontBase*>(aFont);

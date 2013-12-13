@@ -599,6 +599,17 @@ private:
     int fGlyphCount;
 };
 
+SK_API SkTypeface*
+SkDirectWriteCreateTypefaceFromDWriteFont(IDWriteFontFace* fontFace,
+                                          IDWriteFont* font,
+                                          IDWriteFontFamily* fontFamily,
+                                          StreamFontFileLoader* fontFileLoader = NULL,
+                                          IDWriteFontCollectionLoader* fontCollectionLoader = NULL)
+{
+    return DWriteFontTypeface::Create(fontFace, font, fontFamily, fontFileLoader, fontCollectionLoader);
+}
+
+
 static bool are_same(IUnknown* a, IUnknown* b) {
     SkTScopedComPtr<IUnknown> iunkA;
     if (FAILED(a->QueryInterface(&iunkA))) {
@@ -1648,6 +1659,7 @@ static void get_locale_string(IDWriteLocalizedStrings* names, const WCHAR* prefe
     HRV(wchar_to_skstring(name.get(), skname));
 }
 
+
 SkTypeface* SkFontMgr_DirectWrite::createTypefaceFromDWriteFont(
                                            IDWriteFontFace* fontFace,
                                            IDWriteFont* font,
@@ -1864,6 +1876,7 @@ SkTypeface* SkFontStyleSet_DirectWrite::matchStyle(const SkFontStyle& pattern) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+#if 0
 typedef decltype(GetUserDefaultLocaleName)* GetUserDefaultLocaleNameProc;
 static HRESULT GetGetUserDefaultLocaleNameProc(GetUserDefaultLocaleNameProc* proc) {
     *proc = reinterpret_cast<GetUserDefaultLocaleNameProc>(
@@ -1878,6 +1891,13 @@ static HRESULT GetGetUserDefaultLocaleNameProc(GetUserDefaultLocaleNameProc* pro
     }
     return S_OK;
 }
+#else
+typedef HRESULT (*GetUserDefaultLocaleNameProc)(void *, int);
+static HRESULT GetGetUserDefaultLocaleNameProc(GetUserDefaultLocaleNameProc* proc) {
+    *proc = nullptr;
+    return ERROR_PROC_NOT_FOUND;
+}
+#endif
 
 SkFontMgr* SkFontMgr_New_DirectWrite() {
     IDWriteFactory* factory;
