@@ -839,9 +839,10 @@ DrawTargetSkia::Init(const IntSize &aSize, SurfaceFormat aFormat)
 #ifdef USE_SKIA_GPU
 void
 DrawTargetSkia::InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
-                                         GrContext* aGrContext,
-                                         const IntSize &aSize,
-                                         SurfaceFormat aFormat)
+                                      GrContext* aGrContext,
+                                      const IntSize &aSize,
+                                      SurfaceFormat aFormat,
+                                      uint32_t aExistingTexture)
 {
   mGLContextSkia = aGLContextSkia;
   mGrContext = aGrContext;
@@ -849,18 +850,34 @@ DrawTargetSkia::InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
   mSize = aSize;
   mFormat = aFormat;
 
-  GrTextureDesc targetDescriptor;
+  SkAutoTUnref<GrTexture> skiaTexture;
 
-  targetDescriptor.fFlags = kRenderTarget_GrTextureFlagBit;
-  targetDescriptor.fWidth = mSize.width;
-  targetDescriptor.fHeight = mSize.height;
-  targetDescriptor.fConfig = GfxFormatToGrConfig(mFormat);
-  targetDescriptor.fOrigin = kBottomLeft_GrSurfaceOrigin;
-  targetDescriptor.fSampleCnt = 0;
+  if (aExistingTexture) {
+    // texture already exists
+    GrBackendTextureDesc desc;
+    desc.fFlags = kRenderTarget_GrBackendTextureFlag;
+    desc.fWidth = mSize.width;
+    desc.fHeight = mSize.height;
+    desc.fConfig = GfxFormatToGrConfig(mFormat);
+    desc.fOrigin = kBottomLeft_GrSurfaceOrigin;
+    desc.fSampleCnt = 0;
+    desc.fTextureHandle = (GrBackendObject) aExistingTexture;
 
-  SkAutoTUnref<GrTexture> skiaTexture(mGrContext->createUncachedTexture(targetDescriptor, NULL, 0));
+    skiaTexture.reset(mGrContext->wrapBackendTexture(desc));
+    mGLTextureID = aExistingTexture;
+  } else {
+    // we ask skia to create a new one for us
+    GrTextureDesc desc;
+    desc.fFlags = kRenderTarget_GrTextureFlagBit;
+    desc.fWidth = mSize.width;
+    desc.fHeight = mSize.height;
+    desc.fConfig = GfxFormatToGrConfig(mFormat);
+    desc.fOrigin = kBottomLeft_GrSurfaceOrigin;
+    desc.fSampleCnt = 0;
 
-  mGLTextureID = (uint32_t)skiaTexture->getTextureHandle();
+    skiaTexture.reset(mGrContext->createUncachedTexture(desc, NULL, 0));
+    mGLTextureID = (uint32_t)skiaTexture->getTextureHandle();
+  }
 
   SkAutoTUnref<SkDevice> device(new SkGpuDevice(mGrContext.get(), skiaTexture->asRenderTarget()));
   SkAutoTUnref<SkCanvas> canvas(new SkCanvas(device.get()));

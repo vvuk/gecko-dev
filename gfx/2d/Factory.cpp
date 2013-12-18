@@ -534,12 +534,13 @@ Factory::D2DCleanup()
 #ifdef USE_SKIA_GPU
 TemporaryRef<DrawTarget>
 Factory::CreateDrawTargetSkiaWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
-                                                  GrContext* aGrContext,
-                                                  const IntSize &aSize,
-                                                  SurfaceFormat aFormat)
+                                               GrContext* aGrContext,
+                                               const IntSize &aSize,
+                                               SurfaceFormat aFormat,
+                                               uint32_t aExistingTexture)
 {
   DrawTargetSkia* newDrawTargetSkia = new DrawTargetSkia();
-  newDrawTargetSkia->InitWithGLContextSkia(aGLContextSkia, aGrContext, aSize, aFormat);
+  newDrawTargetSkia->InitWithGLContextSkia(aGLContextSkia, aGrContext, aSize, aFormat, aExistingTexture);
   RefPtr<DrawTarget> newTarget = newDrawTargetSkia;
   return newTarget;
 }

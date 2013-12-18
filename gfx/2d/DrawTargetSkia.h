@@ -107,10 +107,16 @@ public:
 
 #ifdef USE_SKIA_GPU
   virtual GenericRefCountedBase* GetGLContextSkia() const MOZ_OVERRIDE { return mGLContextSkia; }
+
+  /* If aExistingTexture is passed in, it's the texture ID of a GL texture with appropriate
+   * size etc. that SkiaGL should use.  If it's 0, then a texture will be created
+   * and its lifetime will be tied to the life of this DrawTargetSkia.
+   */
   void InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
-                                GrContext* aGrContext,
-                                const IntSize &aSize,
-                                SurfaceFormat aFormat) MOZ_OVERRIDE;
+                             GrContext* aGrContext,
+                             const IntSize &aSize,
+                             SurfaceFormat aFormat,
+                             uint32_t aExistingTexture = 0) MOZ_OVERRIDE;
 
   void SetCacheLimits(int aCount, int aSizeInBytes);
   void PurgeCaches();

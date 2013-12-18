@@ -940,9 +940,10 @@ public:
 
 #ifdef USE_SKIA_GPU
   virtual void InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
-                                        GrContext* aGrContext,
-                                        const IntSize &aSize,
-                                        SurfaceFormat aFormat)
+                                     GrContext* aGrContext,
+                                     const IntSize &aSize,
+                                     SurfaceFormat aFormat,
+                                     uint32_t aTexture = 0)
   {
     MOZ_CRASH();
   }
@@ -1031,11 +1032,16 @@ public:
   static void SetGlobalEventRecorder(DrawEventRecorder *aRecorder);
 
 #ifdef USE_SKIA_GPU
+  /* If aExistingTexture is passed in, it's the texture ID of a GL texture with appropriate
+   * size etc. that SkiaGL should use.  If it's 0, then a texture will be created
+   * and its lifetime will be tied to the life of this DrawTarget.
+   */
   static TemporaryRef<DrawTarget>
     CreateDrawTargetSkiaWithGLContextSkia(GenericRefCountedBase* aGLContext,
-                                             GrContext* aGrContext,
-                                             const IntSize &aSize,
-                                             SurfaceFormat aFormat);
+                                          GrContext* aGrContext,
+                                          const IntSize &aSize,
+                                          SurfaceFormat aFormat,
+                                          uint32_t aExistingTexture = 0);
 
   static void
     SetGlobalSkiaCacheLimits(int aCount, int aSizeInBytes);
