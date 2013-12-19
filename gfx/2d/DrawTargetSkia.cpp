@@ -879,7 +879,7 @@ DrawTargetSkia::InitWithGLContextSkia(GenericRefCountedBase* aGLContextSkia,
     mGLTextureID = (uint32_t)skiaTexture->getTextureHandle();
   }
 
-  SkAutoTUnref<SkDevice> device(new SkGpuDevice(mGrContext.get(), skiaTexture->asRenderTarget()));
+  SkAutoTUnref<SkBaseDevice> device(new SkGpuDevice(mGrContext.get(), skiaTexture->asRenderTarget()));
   SkAutoTUnref<SkCanvas> canvas(new SkCanvas(device.get()));
   mCanvas = canvas.get();
 
