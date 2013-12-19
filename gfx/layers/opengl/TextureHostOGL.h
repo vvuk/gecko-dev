@@ -963,7 +963,7 @@ public:
 
   virtual NewTextureSource* GetTextureSources() MOZ_OVERRIDE;
 
-  virtual already_AddRefed<gfxImageSurface> GetAsSurface() MOZ_OVERRIDE
+  virtual TemporaryRef<gfx::DataSourceSurface> GetAsSurface() MOZ_OVERRIDE
   {
     return nullptr; // XXX - implement this (for MOZ_DUMP_PAINTING)
   }
