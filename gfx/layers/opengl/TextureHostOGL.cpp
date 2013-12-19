@@ -117,7 +117,7 @@ CreateTextureHostOGL(const SurfaceDescriptor& aDesc,
                                               desc.size(),
                                               desc.format(),
                                               desc.texture(),
-                                              nullptr,
+                                              reinterpret_cast<gl::MainThreadSyncObject*>(desc.syncObject()),
                                               desc.flipped());
       break;
     } 
@@ -1458,13 +1458,13 @@ SkiaGLSharedTextureHostOGL::SkiaGLSharedTextureHostOGL(TextureFlags aFlags,
                                                        gfx::IntSize aSize,
                                                        gfx::SurfaceFormat aFormat,
                                                        GLuint aTextureID,
-                                                       void **aFenceSyncPtr,
+                                                       gl::MainThreadSyncObject *aSyncObject,
                                                        bool aFlip)
   : TextureHost(aFlags)
   , mSize(aSize)
   , mFormat(aFormat)
   , mTextureID(aTextureID)
-  , mFenceSyncPtr(aFenceSyncPtr)
+  , mSyncObject(aSyncObject)
   , mDoFlip(aFlip)
   , mCompositor(nullptr)
 {
@@ -1499,7 +1499,11 @@ bool
 SkiaGLSharedTextureHostOGL::Lock()
 {
   // XXX lock global process-wide mutex for this
-  // XXX wait for fence
+
+  if (mSyncObject) {
+    mSyncObject->WaitSync(mCompositor->gl());
+  }
+
   return true;
 }
 

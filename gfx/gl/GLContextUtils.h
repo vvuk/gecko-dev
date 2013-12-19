@@ -8,7 +8,9 @@
 #define GLCONTEXTUTILS_H_
 
 #include "GLContextTypes.h"
+#include "GLContext.h"
 #include "mozilla/gfx/Types.h"
+#include "mozilla/Mutex.h"
 
 namespace mozilla {
 namespace gfx {
@@ -21,6 +23,34 @@ namespace gl {
 
 TemporaryRef<gfx::DataSourceSurface>
 ReadBackSurface(GLContext* aContext, GLuint aTexture, bool aYInvert, gfx::SurfaceFormat aFormat);
+
+// A sync object that's only created and deleted on the main thread.  It can be waited
+// on on any thread.
+class MainThreadSyncObject : public AtomicRefCounted<MainThreadSyncObject>
+{
+public:
+    // context for creation/deletion
+    MainThreadSyncObject(GLContext *cx = nullptr);
+    void SetMainThreadContext(GLContext *cx) {
+        mMainThreadGLContext = cx;
+    }
+
+    virtual ~MainThreadSyncObject();
+
+    bool FenceSync();
+
+    // Waits on a sync object.  Note that this MainThreadSyncObject can't be reused/reset
+    // until the wait is finished (FenceSync will block).  Returns true if signalled,
+    // false if timeout or something else.
+    bool WaitSync(GLContext *waitCx);
+    bool ClientWaitSync(GLContext *waitCx, uint64_t timeout = LOCAL_GL_TIMEOUT_IGNORED);
+
+protected:
+    void *AtomicExchangeSync(void *newSync);
+    nsRefPtr<GLContext> mMainThreadGLContext;
+    Mutex mMutex;
+    void *mSync;
+};
 
 } // namespace gl
 } // namespace mozilla

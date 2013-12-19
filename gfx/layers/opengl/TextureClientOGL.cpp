@@ -138,13 +138,15 @@ SkiaGLSharedTextureClientOGL::Unlock()
 {
   if (mDrawTarget) {
     mDrawTarget->Flush();
-    GLContextSkia *cxskia = gfxPlatform::GetPlatform()->GetContentGLContextSkia();
-    GLContext *gl = cxskia->GetGLContext();
 
-
-    // XXX insert fence into stream and set the global fence id to it
-    gl->MakeCurrent();
-    gl->fFinish();
+    if (mSyncObject) {
+      mSyncObject->FenceSync();
+    } else {
+      GLContextSkia *cxskia = gfxPlatform::GetPlatform()->GetContentGLContextSkia();
+      GLContext *gl = cxskia->GetGLContext();
+      gl->MakeCurrent();
+      gl->fFinish();
+    }
 
     mDrawTarget = nullptr;
   }
@@ -156,7 +158,7 @@ bool
 SkiaGLSharedTextureClientOGL::ToSurfaceDescriptor(SurfaceDescriptor& aDescriptor)
 {
   aDescriptor = SurfaceDescriptorSharedGLTexture(mGLTextureID, mFormat,
-                                                 mSize, true);
+                                                 mSize, true, reinterpret_cast<uint64_t>(mSyncObject.get()));
   return true;
 }
 
@@ -233,6 +235,10 @@ SkiaGLSharedTextureClientOGL::AllocateForSurface(gfx::IntSize aSize,
                   eformat, etype, nullptr);
 
   mGLTextureID = tex;
+
+  if (gl->IsExtensionSupported(GLContext::ARB_sync)) {
+    mSyncObject = new gl::MainThreadSyncObject(gl);
+  }
 
   return true;
 }

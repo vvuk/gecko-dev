@@ -10,6 +10,7 @@
 #include <stdint.h>                     // for uint64_t
 #include "CompositableHost.h"
 #include "GLContextTypes.h"             // for GLContext
+#include "GLContextUtils.h"             // for gl::MainThreadSyncObject
 #include "GLDefs.h"                     // for GLenum, LOCAL_GL_CLAMP_TO_EDGE, etc
 #include "GLTextureImage.h"             // for TextureImage
 #include "gfx3DMatrix.h"                // for gfx3DMatrix
@@ -947,7 +948,7 @@ public:
                              gfx::IntSize aSize,
                              gfx::SurfaceFormat aFormat,
                              GLuint aTextureID,
-                             void **aFenceSyncPtr,
+                             gl::MainThreadSyncObject *aSyncObject,
                              bool aFlip);
 
   virtual ~SkiaGLSharedTextureHostOGL();
@@ -975,7 +976,7 @@ protected:
   gfx::IntSize mSize;
   gfx::SurfaceFormat mFormat;
   GLuint mTextureID;
-  void **mFenceSyncPtr;
+  RefPtr<gl::MainThreadSyncObject> mSyncObject;
   bool mDoFlip;
 
   RefPtr<SkiaGLSharedTextureSourceOGL> mTextureSource;

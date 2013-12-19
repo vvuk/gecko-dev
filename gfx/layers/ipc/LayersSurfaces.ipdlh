@@ -56,6 +56,7 @@ struct SurfaceDescriptorSharedGLTexture {
   SurfaceFormat format;
   IntSize size;
   bool flipped; // y-flip?
+  uint64_t syncObject; // the MainThreadSyncObject pointer; bare ptr, no ref
 };
 
 struct SharedTextureDescriptor {

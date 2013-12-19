@@ -7,6 +7,7 @@
 #define MOZILLA_GFX_TEXTURECLIENTOGL_H
 
 #include "GLContextTypes.h"             // for SharedTextureHandle, etc
+#include "GLContextUtils.h"
 #include "gfxTypes.h"
 #include "mozilla/Attributes.h"         // for MOZ_OVERRIDE
 #include "mozilla/gfx/Point.h"          // for IntSize
@@ -94,10 +95,12 @@ protected:
   gfx::SurfaceFormat mFormat;
   gfx::IntSize mSize;
   uint32_t mGLTextureID;
+  RefPtr<gl::MainThreadSyncObject> mSyncObject;
 
   RefPtr<gfx::DrawTarget> mDrawTarget;
 
   SkRefPtr<GrTexture> mSkiaTexture;
+
 };
 
 class DeprecatedTextureClientSharedOGL : public DeprecatedTextureClient
