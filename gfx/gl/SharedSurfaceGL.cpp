@@ -55,11 +55,13 @@ SharedSurface_GL::Copy(SharedSurface_GL* src, SharedSurface_GL* dest,
             GLuint destTex = dest->Texture();
             GLenum destTarget = dest->TextureTarget();
 
+            gl->MakeCurrent();
             gl->BlitHelper()->BlitFramebufferToTexture(0, destTex, src->Size(), dest->Size(), destTarget);
         } else if (dest->AttachType() == AttachmentType::GLRenderbuffer) {
             GLuint destRB = dest->Renderbuffer();
             ScopedFramebufferForRenderbuffer destWrapper(gl, destRB);
 
+            gl->MakeCurrent();
             gl->BlitHelper()->BlitFramebufferToFramebuffer(0, destWrapper.FB(),
                                                            src->Size(), dest->Size());
         } else {
@@ -124,6 +126,7 @@ SharedSurface_GL::Copy(SharedSurface_GL* src, SharedSurface_GL* dest,
             GLuint destTex = dest->Texture();
             GLenum destTarget = dest->TextureTarget();
 
+            gl->MakeCurrent();
             gl->BlitHelper()->BlitTextureToTexture(srcTex, destTex,
                                                    src->Size(), dest->Size(),
                                                    srcTarget, destTarget);
@@ -135,6 +138,7 @@ SharedSurface_GL::Copy(SharedSurface_GL* src, SharedSurface_GL* dest,
             GLuint destRB = dest->Renderbuffer();
             ScopedFramebufferForRenderbuffer destWrapper(gl, destRB);
 
+            gl->MakeCurrent();
             gl->BlitHelper()->BlitTextureToFramebuffer(srcTex, destWrapper.FB(),
                                                        src->Size(), dest->Size(), srcTarget);
 
@@ -152,6 +156,7 @@ SharedSurface_GL::Copy(SharedSurface_GL* src, SharedSurface_GL* dest,
             GLuint destTex = dest->Texture();
             GLenum destTarget = dest->TextureTarget();
 
+            gl->MakeCurrent();
             gl->BlitHelper()->BlitFramebufferToTexture(srcWrapper.FB(), destTex,
                                                        src->Size(), dest->Size(), destTarget);
 
@@ -162,6 +167,7 @@ SharedSurface_GL::Copy(SharedSurface_GL* src, SharedSurface_GL* dest,
             GLuint destRB = dest->Renderbuffer();
             ScopedFramebufferForRenderbuffer destWrapper(gl, destRB);
 
+            gl->MakeCurrent();
             gl->BlitHelper()->BlitFramebufferToFramebuffer(srcWrapper.FB(), destWrapper.FB(),
                                                            src->Size(), dest->Size());
 
