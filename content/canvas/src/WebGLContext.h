@@ -910,6 +910,7 @@ protected:
         WEBGL_lose_context,
         WEBGL_draw_buffers,
         ANGLE_instanced_arrays,
+        EXT_shader_texture_lod,
         WebGLExtensionID_max,
         WebGLExtensionID_unknown_extension
     };

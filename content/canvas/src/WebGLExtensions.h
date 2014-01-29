@@ -131,6 +131,16 @@ public:
     DECL_WEBGL_EXTENSION_GOOP
 };
 
+class WebGLExtensionShaderTextureLod
+    : public WebGLExtensionBase
+{
+public:
+    WebGLExtensionShaderTextureLod(WebGLContext*);
+    virtual ~WebGLExtensionShaderTextureLod();
+
+    DECL_WEBGL_EXTENSION_GOOP
+};
+
 class WebGLExtensionTextureFilterAnisotropic
     : public WebGLExtensionBase
 {

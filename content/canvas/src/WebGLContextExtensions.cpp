@@ -32,7 +32,8 @@ static const char *sExtensionNames[] = {
     "WEBGL_depth_texture",
     "WEBGL_lose_context",
     "WEBGL_draw_buffers",
-    "ANGLE_instanced_arrays"
+    "ANGLE_instanced_arrays",
+    "EXT_shader_texture_lod"
 };
 
 /* static */ const char*
@@ -125,6 +126,8 @@ bool WebGLContext::IsExtensionSupported(WebGLExtensionID ext) const
             return WebGLExtensionSRGB::IsSupported(this);
         case WEBGL_draw_buffers:
             return WebGLExtensionDrawBuffers::IsSupported(this);
+        case EXT_shader_texture_lod:
+            return gl->IsExtensionSupported(GLContext::EXT_shader_texture_lod);
         default:
             // For warnings-as-errors.
             break;
@@ -274,6 +277,9 @@ WebGLContext::EnableExtension(WebGLExtensionID ext)
             break;
         case EXT_sRGB:
             obj = new WebGLExtensionSRGB(this);
+            break;
+        case EXT_shader_texture_lod:
+            obj = new WebGLExtensionShaderTextureLod(this);
             break;
         default:
             MOZ_ASSERT(false, "should not get there.");

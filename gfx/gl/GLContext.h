@@ -406,6 +406,7 @@ public:
         ARB_framebuffer_sRGB,
         EXT_framebuffer_sRGB,
         KHR_debug,
+        EXT_shader_texture_lod,
         Extensions_Max,
         Extensions_End
     };

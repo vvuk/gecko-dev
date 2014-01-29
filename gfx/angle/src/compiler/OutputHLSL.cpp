@@ -597,6 +597,112 @@ void OutputHLSL::header()
             else UNREACHABLE();
         }
 
+        // these are only available if EXT_shader_texture_lod is defined, hence the EXT
+        if (mUsesTexture2DLod)
+        {
+            if (mOutputType == SH_HLSL9_OUTPUT)
+            {
+                out << "float4 gl_texture2DLodEXT(sampler2D s, float2 t, float lod)\n"
+                       "{\n"
+                       "    return tex2Dlod(s, float4(t.x, t.y, 0, lod));\n"
+                       "}\n"
+                       "\n";
+            }
+            else if (mOutputType == SH_HLSL11_OUTPUT)
+            {
+                out << "float4 gl_texture2DLodEXT(Texture2D t, SamplerState s, float2 uv, float lod)\n"
+                       "{\n"
+                       "    return t.SampleLevel(s, uv, lod);\n"
+                       "}\n"
+                       "\n";
+            }
+            else UNREACHABLE();
+        }
+
+        if (mUsesTexture2DProj)
+        {
+            if (mOutputType == SH_HLSL9_OUTPUT)
+            {
+                out << "float4 gl_texture2DProjEXT(sampler2D s, float3 t)\n"
+                       "{\n"
+                       "    return tex2Dlod(s, float4(t.x / t.z, t.y / t.z, 0, 0));\n"
+                       "}\n"
+                       "\n"
+                       "float4 gl_texture2DProjEXT(sampler2D s, float4 t)\n"
+                       "{\n"
+                       "    return tex2Dlod(s, float4(t.x / t.w, t.y / t.w, 0, 0));\n"
+                       "}\n"
+                       "\n";
+            }
+            else if (mOutputType == SH_HLSL11_OUTPUT)
+            {
+                out << "float4 gl_texture2DProjEXT(Texture2D t, SamplerState s, float3 uvw)\n"
+                       "{\n"
+                       "    return t.SampleLevel(s, float2(uvw.x / uvw.z, uvw.y / uvw.z), 0);\n"
+                       "}\n"
+                       "\n"
+                       "float4 gl_texture2DProjEXT(Texture2D t, SamplerState s, float4 uvw)\n"
+                       "{\n"
+                       "    return t.SampleLevel(s, float2(uvw.x / uvw.w, uvw.y / uvw.w), 0);\n"
+                       "}\n"
+                       "\n";
+            }
+            else UNREACHABLE();
+        }
+
+        if (mUsesTexture2DProjLod)
+        {
+            if (mOutputType == SH_HLSL9_OUTPUT)
+            {
+                out << "float4 gl_texture2DProjLodEXT(sampler2D s, float3 t, float lod)\n"
+                       "{\n"
+                       "    return tex2Dlod(s, float4(t.x / t.z, t.y / t.z, 0, lod));\n"
+                       "}\n"
+                       "\n"
+                       "float4 gl_texture2DProjLodEXT(sampler2D s, float4 t, float lod)\n"
+                       "{\n"
+                       "    return tex2Dlod(s, float4(t.x / t.w, t.y / t.w, 0, lod));\n"
+                       "}\n"
+                       "\n";
+            }
+            else if (mOutputType == SH_HLSL11_OUTPUT)
+            {
+                // XXX bug! in ANGLE this was gl_Texture2DProj, should be ProjLod! (filed ANGLE issue #549)
+                out << "float4 gl_texture2DProjLodEXT(Texture2D t, SamplerState s, float3 uvw, float lod)\n"
+                       "{\n"
+                       "    return t.SampleLevel(s, float2(uvw.x / uvw.z, uvw.y / uvw.z), lod);\n"
+                       "}\n"
+                       "\n"
+                       "float4 gl_texture2DProjLodEXT(Texture2D t, SamplerState s, float4 uvw)\n"
+                       "{\n"
+                       "    return t.SampleLevel(s, float2(uvw.x / uvw.w, uvw.y / uvw.w), lod);\n"
+                       "}\n"
+                       "\n";
+            }
+            else UNREACHABLE();
+        }
+
+        if (mUsesTextureCubeLod)
+        {
+            if (mOutputType == SH_HLSL9_OUTPUT)
+            {
+                out << "float4 gl_textureCubeLodEXT(samplerCUBE s, float3 t, float lod)\n"
+                       "{\n"
+                       "    return texCUBElod(s, float4(t.x, t.y, t.z, lod));\n"
+                       "}\n"
+                       "\n";
+            }
+            else if (mOutputType == SH_HLSL11_OUTPUT)
+            {
+                out << "float4 gl_textureCubeLodEXT(TextureCube t, SamplerState s, float3 uvw, float lod)\n"
+                       "{\n"
+                       "    return t.SampleLevel(s, uvw, lod);\n"
+                       "}\n"
+                       "\n";
+            }
+            else UNREACHABLE();
+        }
+
         if (usingMRTExtension && mNumRenderTargets > 1)
         {
             out << "#define GL_USES_MRT\n";
@@ -761,12 +867,13 @@ void OutputHLSL::header()
             }
             else if (mOutputType == SH_HLSL11_OUTPUT)
             {
-                out << "float4 gl_texture2DProj(Texture2D t, SamplerState s, float3 uvw, float lod)\n"
+                // XXX bug! in ANGLE this was gl_Texture2DProj, should be ProjLod! (filed ANGLE issue #549)
+                out << "float4 gl_texture2DProjLod(Texture2D t, SamplerState s, float3 uvw, float lod)\n"
                        "{\n"
                        "    return t.SampleLevel(s, float2(uvw.x / uvw.z, uvw.y / uvw.z), lod);\n"
                        "}\n"
                        "\n"
-                       "float4 gl_texture2DProj(Texture2D t, SamplerState s, float4 uvw)\n"
+                       "float4 gl_texture2DProjLod(Texture2D t, SamplerState s, float4 uvw)\n"
                        "{\n"
                        "    return t.SampleLevel(s, float2(uvw.x / uvw.w, uvw.y / uvw.w), lod);\n"
                        "}\n"
@@ -1750,6 +1857,16 @@ bool OutputHLSL::visitAggregate(Visit visit, TIntermAggregate *node)
 
                     out << "gl_texture2DLod(";
                 }
+                else if (name == "texture2DLodEXT")
+                {
+                    if (node->getSequence().size() == 3)
+                    {
+                        mUsesTexture2DLod = true;
+                    }
+                    else UNREACHABLE();
+
+                    out << "gl_texture2DLodEXT(";
+                }
                 else if (name == "texture2DProjLod")
                 {
                     if (node->getSequence().size() == 3)
@@ -1760,6 +1877,16 @@ bool OutputHLSL::visitAggregate(Visit visit, TIntermAggregate *node)
 
                     out << "gl_texture2DProjLod(";
                 }
+                else if (name == "texture2DProjLodEXT")
+                {
+                    if (node->getSequence().size() == 3)
+                    {
+                        mUsesTexture2DProjLod = true;
+                    }
+                    else UNREACHABLE();
+
+                    out << "gl_texture2DProjLodEXT(";
+                }
                 else if (name == "textureCubeLod")
                 {
                     if (node->getSequence().size() == 3)
@@ -1769,6 +1896,16 @@ bool OutputHLSL::visitAggregate(Visit visit, TIntermAggregate *node)
                     else UNREACHABLE();
 
                     out << "gl_textureCubeLod(";
+                }
+                else if (name == "textureCubeLodEXT")
+                {
+                    if (node->getSequence().size() == 3)
+                    {
+                        mUsesTextureCubeLod = true;
+                    }
+                    else UNREACHABLE();
+
+                    out << "gl_textureCubeLodEXT(";
                 }
                 else UNREACHABLE();
             }
