@@ -924,3 +924,35 @@ interface WebGLExtensionInstancedArrays {
     void drawElementsInstancedANGLE(GLenum mode, GLsizei count, GLenum type, GLintptr offset, GLsizei primcount);
     void vertexAttribDivisorANGLE(GLuint index, GLuint divisor);
 };
+
+[NoInterfaceObject]
+interface WebGLExtensionArrayBufferData
+{
+    void bufferDataWEBGL(GLenum target, ArrayBuffer data, GLintptr start, GLsizeiptr length, GLenum usage);
+    void bufferSubDataWEBGL(GLenum target, GLintptr offset, ArrayBuffer data, GLintptr start, GLsizeiptr length);
+
+    void compressedTexImage2DWEBGL(GLenum target, GLint level, GLenum internalformat,
+                                   GLsizei width, GLsizei height, GLint border,
+                                   ArrayBuffer data, GLintptr start, GLsizeiptr length);
+    void compressedTexSubImage2DWEBGL(GLenum target, GLint level,
+                                      GLint xoffset, GLint yoffset,
+                                      GLsizei width, GLsizei height, GLenum format,
+                                      ArrayBuffer data, GLintptr start, GLsizeiptr length);
+
+    [Throws]
+    void readPixelsWEBGL(GLint x, GLint y, GLsizei width, GLsizei height, 
+                         GLenum format, GLenum type,
+                         ArrayBuffer data, GLintptr start, GLsizeiptr length);
+
+    [Throws]
+    void texImage2DWEBGL(GLenum target, GLint level, GLenum internalformat, 
+                         GLsizei width, GLsizei height, GLint border, GLenum format, 
+                         GLenum type,
+                         ArrayBuffer data, GLintptr start, GLsizeiptr length);
+
+    [Throws]
+    void texSubImage2DWEBGL(GLenum target, GLint level, GLint xoffset, GLint yoffset, 
+                            GLsizei width, GLsizei height, 
+                            GLenum format, GLenum type,
+                            ArrayBuffer data, GLintptr start, GLsizeiptr length);
+};

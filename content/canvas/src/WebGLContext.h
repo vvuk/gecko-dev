@@ -289,11 +289,20 @@ public:
                               GLenum internalformat, GLsizei width,
                               GLsizei height, GLint border,
                               const dom::ArrayBufferView& view);
+    void CompressedTexImage2D(GLenum target, GLint level,
+                              GLenum internalformat, GLsizei width,
+                              GLsizei height, GLint border,
+                              const dom::ArrayBuffer& view, WebGLintptr start, WebGLsizeiptr length);
     void CompressedTexSubImage2D(GLenum target, GLint level,
                                  GLint xoffset, GLint yoffset,
                                  GLsizei width, GLsizei height,
                                  GLenum format,
                                  const dom::ArrayBufferView& view);
+    void CompressedTexSubImage2D(GLenum target, GLint level,
+                                 GLint xoffset, GLint yoffset,
+                                 GLsizei width, GLsizei height,
+                                 GLenum format,
+                                 const dom::ArrayBuffer& view, WebGLintptr start, WebGLsizeiptr length);
     void CopyTexImage2D(GLenum target, GLint level,
                         GLenum internalformat, GLint x, GLint y,
                         GLsizei width, GLsizei height, GLint border);
@@ -391,6 +400,10 @@ public:
                     GLenum format, GLenum type,
                     const Nullable<dom::ArrayBufferView> &pixels,
                     ErrorResult& rv);
+    void ReadPixels(GLint x, GLint y, GLsizei width, GLsizei height,
+                    GLenum format, GLenum type,
+                    const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
+                    ErrorResult& rv);
     void RenderbufferStorage(GLenum target, GLenum internalformat,
                              GLsizei width, GLsizei height);
     void SampleCoverage(GLclampf value, WebGLboolean invert);
@@ -409,6 +422,12 @@ public:
                     GLsizei height, GLint border, GLenum format,
                     GLenum type,
                     const Nullable<dom::ArrayBufferView> &pixels,
+                    ErrorResult& rv);
+    void TexImage2D(GLenum target, GLint level,
+                    GLenum internalformat, GLsizei width,
+                    GLsizei height, GLint border, GLenum format,
+                    GLenum type,
+                    const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
                     ErrorResult& rv);
     void TexImage2D(GLenum target, GLint level,
                     GLenum internalformat, GLenum format, GLenum type,
@@ -449,6 +468,12 @@ public:
                        GLsizei width, GLsizei height, GLenum format,
                        GLenum type,
                        const Nullable<dom::ArrayBufferView> &pixels,
+                       ErrorResult& rv);
+    void TexSubImage2D(GLenum target, GLint level,
+                       GLint xoffset, GLint yoffset,
+                       GLsizei width, GLsizei height, GLenum format,
+                       GLenum type,
+                       const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
                        ErrorResult& rv);
     void TexSubImage2D(GLenum target, GLint level,
                        GLint xoffset, GLint yoffset, GLenum format,
@@ -671,13 +696,17 @@ public:
     void BindBufferRange(GLenum target, GLuint index, WebGLBuffer* buffer,
                          WebGLintptr offset, WebGLsizeiptr size);
     void BufferData(GLenum target, WebGLsizeiptr size, GLenum usage);
-    void BufferData(GLenum target, const dom::ArrayBufferView &data,
+    void BufferData(GLenum target, const dom::ArrayBufferView &data, GLenum usage);
+    void BufferData(GLenum target,
+                    const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
                     GLenum usage);
     void BufferData(GLenum target,
                     const Nullable<dom::ArrayBuffer> &maybeData,
                     GLenum usage);
     void BufferSubData(GLenum target, WebGLsizeiptr byteOffset,
                        const dom::ArrayBufferView &data);
+    void BufferSubData(GLenum target, WebGLsizeiptr byteOffset,
+                       const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length);
     void BufferSubData(GLenum target, WebGLsizeiptr byteOffset,
                        const Nullable<dom::ArrayBuffer> &maybeData);
     already_AddRefed<WebGLBuffer> CreateBuffer();
@@ -818,6 +847,10 @@ protected:
     void UndoFakeVertexAttrib0();
     void InvalidateFakeVertexAttrib0();
 
+    // Check if the given start and length params are valid for the data buffer.  If not,
+    // reports errors attributed to given function name.
+    bool CheckArrayBufferStartAndLength(const char *func, const dom::ArrayBuffer& data, WebGLintptr start, WebGLsizeiptr length);
+
     static CheckedUint32 GetImageSize(GLsizei height,
                                       GLsizei width,
                                       uint32_t pixelSize,
@@ -911,6 +944,7 @@ protected:
         WEBGL_draw_buffers,
         ANGLE_instanced_arrays,
         EXT_shader_texture_lod,
+        WEBGL_array_buffer_data,
         WebGLExtensionID_max,
         WebGLExtensionID_unknown_extension
     };
@@ -972,6 +1006,16 @@ protected:
     void MakeContextCurrent() const;
 
     // helpers
+    void CompressedTexSubImage2D_base(GLenum target, GLint level,
+                                      GLint xoffset, GLint yoffset,
+                                      GLsizei width, GLsizei height,
+                                      GLenum format,
+                                      const void *validDataPtr, uint32_t validDataLen);
+    void ReadPixels_base(GLint x, GLint y, GLsizei width,
+                         GLsizei height, GLenum format, GLenum type,
+                         void *validDataPtr, uint32_t validDataLen,
+                         int maybeArrayViewDataType,
+                         ErrorResult& rv);
     void TexImage2D_base(GLenum target, GLint level, GLenum internalformat,
                          GLsizei width, GLsizei height, GLsizei srcStrideOrZero, GLint border,
                          GLenum format, GLenum type,

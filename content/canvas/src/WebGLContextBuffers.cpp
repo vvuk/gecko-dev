@@ -196,19 +196,33 @@ WebGLContext::BufferData(GLenum target,
         return ErrorInvalidValue("bufferData: null object passed");
     }
 
-    WebGLRefPtr<WebGLBuffer>* bufferSlot = GetBufferSlotByTarget(target, "bufferData");
-
-    if (!bufferSlot) {
-        return;
-    }
-
     const ArrayBuffer& data = maybeData.Value();
 
     // careful: data.Length() could conceivably be any size_t, but GLsizeiptr is like intptr_t.
     if (!CheckedInt<GLsizeiptr>(data.Length()).isValid())
         return ErrorOutOfMemory("bufferData: bad size");
 
+    BufferData(target, data, 0, data.Length()), usage);
+}
+
+void
+WebGLContext::BufferData(GLenum target,
+                         const ArrayBuffer &data,
+                         WebGLintptr start, WebGLsizeiptr length,
+                         GLenum usage)
+{
+    if (IsContextLost())
+        return;
+
+    WebGLRefPtr<WebGLBuffer>* bufferSlot = GetBufferSlotByTarget(target, "bufferData");
+
+    if (!bufferSlot)
+        return;
+
     if (!ValidateBufferUsageEnum(usage, "bufferData: usage"))
+        return;
+
+    if (!CheckArrayBufferStartAndLength("bufferData", data, start, length))
         return;
 
     WebGLBuffer* boundBuffer = bufferSlot->get();
@@ -219,15 +233,17 @@ WebGLContext::BufferData(GLenum target,
     MakeContextCurrent();
     InvalidateBufferFetching();
 
-    GLenum error = CheckedBufferData(target, data.Length(), data.Data(), usage);
+    GLvoid *dataPtr = data.Data() + start;
+
+    GLenum error = CheckedBufferData(target, length, dataPtr, usage);
 
     if (error) {
         GenerateWarning("bufferData generated error %s", ErrorName(error));
         return;
     }
 
-    boundBuffer->SetByteLength(data.Length());
-    if (!boundBuffer->ElementArrayCacheBufferData(data.Data(), data.Length())) {
+    boundBuffer->SetByteLength(length);
+    if (!boundBuffer->ElementArrayCacheBufferData(dataPtr, length)) {
         return ErrorOutOfMemory("bufferData: out of memory");
     }
 }
@@ -284,13 +300,27 @@ WebGLContext::BufferSubData(GLenum target, WebGLsizeiptr byteOffset,
         return;
     }
 
+    const ArrayBuffer& data = maybeData.Value();
+
+    // careful: data.Length() could conceivably be any size_t, but GLsizeiptr is like intptr_t.
+    if (!CheckedInt<GLsizeiptr>(data.Length()).isValid())
+        return ErrorOutOfMemory("bufferData: bad size");
+
+    BufferSubData(target, byteOffset, maybeData.Value(), 0, data.Length());
+}
+
+void
+WebGLContext::BufferSubData(GLenum target, WebGLsizeiptr byteOffset,
+                            const ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length)
+{
+    if (IsContextLost())
+        return;
+
     WebGLRefPtr<WebGLBuffer>* bufferSlot = GetBufferSlotByTarget(target, "bufferSubData");
 
     if (!bufferSlot) {
         return;
     }
-
-    const ArrayBuffer& data = maybeData.Value();
 
     if (byteOffset < 0)
         return ErrorInvalidValue("bufferSubData: negative offset");
@@ -300,7 +330,11 @@ WebGLContext::BufferSubData(GLenum target, WebGLsizeiptr byteOffset,
     if (!boundBuffer)
         return ErrorInvalidOperation("bufferData: no buffer bound!");
 
-    CheckedInt<WebGLsizeiptr> checked_neededByteLength = CheckedInt<WebGLsizeiptr>(byteOffset) + data.Length();
+    // make sure the start and length are valid for the given data
+    if (!CheckArrayBufferStartAndLength("bufferSubData", data, start, length))
+        return;
+    
+    CheckedInt<WebGLsizeiptr> checked_neededByteLength = CheckedInt<WebGLsizeiptr>(byteOffset) + length;
     if (!checked_neededByteLength.isValid())
         return ErrorInvalidValue("bufferSubData: integer overflow computing the needed byte length");
 
@@ -310,9 +344,11 @@ WebGLContext::BufferSubData(GLenum target, WebGLsizeiptr byteOffset,
 
     MakeContextCurrent();
 
-    boundBuffer->ElementArrayCacheBufferSubData(byteOffset, data.Data(), data.Length());
+    GLvoid *dataPtr = data.Data() + start;
 
-    gl->fBufferSubData(target, byteOffset, data.Length(), data.Data());
+    gl->fBufferSubData(target, byteOffset, length, dataPtr);
+
+    boundBuffer->ElementArrayCacheBufferSubData(byteOffset, dataPtr, length);
 }
 
 void

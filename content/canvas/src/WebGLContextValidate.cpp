@@ -526,7 +526,7 @@ uint32_t WebGLContext::GetBitsPerTexel(GLenum format, GLenum type)
 }
 
 bool WebGLContext::ValidateTexFormatAndType(GLenum format, GLenum type, int jsArrayType,
-                                              uint32_t *texelSize, const char *info)
+                                            uint32_t *texelSize, uint32_t *texelAlignment, const char *info)
 {
     if (IsExtensionEnabled(WEBGL_depth_texture)) {
         if (format == LOCAL_GL_DEPTH_COMPONENT) {
@@ -538,12 +538,12 @@ bool WebGLContext::ValidateTexFormatAndType(GLenum format, GLenum type, int jsAr
                 }
             }
 
-            switch(type) {
+            switch (type) {
                 case LOCAL_GL_UNSIGNED_SHORT:
-                    *texelSize = 2;
+                    *texelSize = *texelAlignment = 2;
                     break;
                 case LOCAL_GL_UNSIGNED_INT:
-                    *texelSize = 4;
+                    *texelSize = *texelAlignment = 4;
                     break;
                 default:
                     ErrorInvalidOperation("%s: invalid type 0x%x", info, type);
@@ -564,7 +564,7 @@ bool WebGLContext::ValidateTexFormatAndType(GLenum format, GLenum type, int jsAr
                 }
             }
 
-            *texelSize = 4;
+            *texelSize = *texelAlignment = 4;
             return true;
         }
     }
@@ -581,7 +581,7 @@ bool WebGLContext::ValidateTexFormatAndType(GLenum format, GLenum type, int jsAr
             }
 
             if (format == LOCAL_GL_RGBA) {
-                *texelSize = 2;
+                *texelSize = *texelAlignment = 2;
                 return true;
             }
             ErrorInvalidOperation("%s: mutually incompatible format and type", info);
@@ -594,7 +594,7 @@ bool WebGLContext::ValidateTexFormatAndType(GLenum format, GLenum type, int jsAr
             }
 
             if (format == LOCAL_GL_RGB) {
-                *texelSize = 2;
+                *texelSize = *texelAlignment = 2;
                 return true;
             }
             ErrorInvalidOperation("%s: mutually incompatible format and type", info);
@@ -642,6 +642,8 @@ bool WebGLContext::ValidateTexFormatAndType(GLenum format, GLenum type, int jsAr
         ErrorInvalidEnum("%s: invalid type 0x%x", info, type);
         return false;
     }
+
+    *texelAlignment = texMultiplier;
 
     // Ok we know that is a standard type.
     switch (format) {

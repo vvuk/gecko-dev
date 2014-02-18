@@ -33,7 +33,8 @@ static const char *sExtensionNames[] = {
     "WEBGL_lose_context",
     "WEBGL_draw_buffers",
     "ANGLE_instanced_arrays",
-    "EXT_shader_texture_lod"
+    "EXT_shader_texture_lod",
+    "WEBGL_array_buffer_data"
 };
 
 /* static */ const char*
@@ -82,7 +83,8 @@ bool WebGLContext::IsExtensionSupported(WebGLExtensionID ext) const
         case OES_standard_derivatives:
             return gl->IsSupported(GLFeature::standard_derivatives);
         case WEBGL_lose_context:
-            // We always support this extension.
+        case WEBGL_array_buffer_data:
+            // We always support these extension.
             return true;
         case OES_texture_float:
             return gl->IsSupported(GLFeature::texture_float);
@@ -280,6 +282,9 @@ WebGLContext::EnableExtension(WebGLExtensionID ext)
             break;
         case EXT_shader_texture_lod:
             obj = new WebGLExtensionShaderTextureLod(this);
+            break;
+        case WEBGL_array_buffer_data:
+            obj = new WebGLExtensionArrayBufferData(this);
             break;
         default:
             MOZ_ASSERT(false, "should not get there.");

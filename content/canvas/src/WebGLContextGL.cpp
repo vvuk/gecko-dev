@@ -415,8 +415,8 @@ WebGLContext::CopyTexSubImage2D_base(GLenum target,
 
         // first, compute the size of the buffer we should allocate to initialize the texture as black
 
-        uint32_t texelSize = 0;
-        if (!ValidateTexFormatAndType(internalformat, LOCAL_GL_UNSIGNED_BYTE, -1, &texelSize, info))
+        uint32_t texelSize = 0, texelAlignment = 0;
+        if (!ValidateTexFormatAndType(internalformat, LOCAL_GL_UNSIGNED_BYTE, -1, &texelSize, &texelAlignment, info))
             return;
 
         CheckedUint32 checked_neededByteLength =
@@ -2231,13 +2231,55 @@ WebGLContext::PixelStorei(GLenum pname, GLint param)
 void
 WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
                          GLsizei height, GLenum format,
-                         GLenum type, const Nullable<ArrayBufferView> &pixels,
+                         GLenum type, const Nullable<ArrayBufferView> &maybePixels,
                          ErrorResult& rv)
 {
-    if (IsContextLost()) {
+    if (IsContextLost())
         return;
-    }
 
+    if (maybePixels.IsNull())
+        return ErrorInvalidValue("readPixels: null destination buffer");
+
+    const ArrayBufferView& pixels = maybePixels.Value();
+
+    // XXX extend TypedArray_base in dom/bindings/TypedArray.h to have a .Value()
+    int dataType = JS_GetArrayBufferViewType(pixels.Obj());
+
+    ReadPixels_base(x, y, width, height, format, type,
+                    pixels.Data(), pixels.Length(),
+                    dataType, 
+                    rv);
+}
+
+void
+WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
+                         GLsizei height, GLenum format,
+                         GLenum type,
+                         const ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
+                         ErrorResult& rv)
+{
+    if (IsContextLost())
+        return;
+
+    if (!IsExtensionEnabled(WEBGL_array_buffer_data))
+        return ErrorInvalidOperation("readPixels: WEBGL_array_buffer_data is not enabled");
+
+    if (!CheckArrayBufferStartAndLength(data, start, length))
+        return ErrorInvalidValue("readPixels: invalid start and length for given data buffer");
+
+    ReadPixels_Base(x, y, width, height, format, type,
+                    data.Data() + start, length,
+                    -1,
+                    rv);
+}
+
+void
+WebGLContext::ReadPixels_base(GLint x, GLint y, GLsizei width,
+                              GLsizei height, GLenum format, GLenum type,
+                              void *validDataPtr, uint32_t validDataLen,
+                              int maybeArrayViewDataType,
+                              ErrorResult& rv)
+{
     if (mCanvasElement->IsWriteOnly() && !nsContentUtils::IsCallerChrome()) {
         GenerateWarning("readPixels: Not allowed");
         return rv.Throw(NS_ERROR_DOM_SECURITY_ERR);
@@ -2245,9 +2287,6 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
 
     if (width < 0 || height < 0)
         return ErrorInvalidValue("readPixels: negative size passed");
-
-    if (pixels.IsNull())
-        return ErrorInvalidValue("readPixels: null destination buffer");
 
     const WebGLRectangleObject* framebufferRect = CurValidFBRectObject();
     GLsizei framebufferWidth = framebufferRect ? framebufferRect->Width() : 0;
@@ -2270,18 +2309,21 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
             return ErrorInvalidEnum("readPixels: Bad format");
     }
 
+    int alignment = 0;
     uint32_t bytesPerPixel = 0;
     int requiredDataType = 0;
 
     // Check the type param
     switch (type) {
         case LOCAL_GL_UNSIGNED_BYTE:
+            alignment = 1;
             bytesPerPixel = 1 * channels;
             requiredDataType = js::ArrayBufferView::TYPE_UINT8;
             break;
         case LOCAL_GL_UNSIGNED_SHORT_4_4_4_4:
         case LOCAL_GL_UNSIGNED_SHORT_5_5_5_1:
         case LOCAL_GL_UNSIGNED_SHORT_5_6_5:
+            alignment = 2;
             bytesPerPixel = 2;
             requiredDataType = js::ArrayBufferView::TYPE_UINT16;
             break;
@@ -2289,11 +2331,15 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
             return ErrorInvalidEnum("readPixels: Bad type");
     }
 
-    int dataType = JS_GetArrayBufferViewType(pixels.Value().Obj());
-
-    // Check the pixels param type
-    if (dataType != requiredDataType)
-        return ErrorInvalidOperation("readPixels: Mismatched type/pixels types");
+    // Check the pixels param type; if it's -1, then
+    // we're using the array_buffer_data extension case
+    if (maybeArrayViewDataType != -1) {
+        if (dataType != requiredDataType)
+            return ErrorInvalidOperation("readPixels: Mismatched type/pixels types");
+    } else {
+        if ((reinterpret_cast<uintptr_t>(validDataPtr) & (alignment - 1)) != 0)
+            return ErrorInvalidOperation("readPixels: Offset must be aligned to %d bytes for operation", alignment);
+    }
 
     // Check the pixels param size
     CheckedUint32 checked_neededByteLength =
@@ -2307,15 +2353,10 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
     if (!checked_neededByteLength.isValid())
         return ErrorInvalidOperation("readPixels: integer overflow computing the needed buffer size");
 
-    uint32_t dataByteLen = JS_GetTypedArrayByteLength(pixels.Value().Obj());
-    if (checked_neededByteLength.value() > dataByteLen)
+    if (checked_neededByteLength.value() > validDataLen)
         return ErrorInvalidOperation("readPixels: buffer too small");
 
-    void* data = pixels.Value().Data();
-    if (!data) {
-        ErrorOutOfMemory("readPixels: buffer storage is null. Did we run out of memory?");
-        return rv.Throw(NS_ERROR_OUT_OF_MEMORY);
-    }
+    MOZ_ASSERT(validDataPtr, "readPixels pixels.Data() is somehow null, how did we get here?");
 
     // Check the format and type params to assure they are an acceptable pair (as per spec)
     switch (format) {
@@ -2347,7 +2388,7 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
 
     if (CanvasUtils::CheckSaneSubrectSize(x, y, width, height, framebufferWidth, framebufferHeight)) {
         // the easy case: we're not reading out-of-range pixels
-        gl->fReadPixels(x, y, width, height, format, type, data);
+        gl->fReadPixels(x, y, width, height, format, type, validDataPtr);
     } else {
         // the rectangle doesn't fit entirely in the bound buffer. We then have to set to zero the part
         // of the buffer that correspond to out-of-range pixels. We don't want to rely on system OpenGL
@@ -2357,7 +2398,7 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
         // to accomodate the potentially different strides (widths).
 
         // Zero the whole pixel dest area in the destination buffer.
-        memset(data, 0, checked_neededByteLength.value());
+        memset(validDataPtr, 0, checked_neededByteLength.value());
 
         if (   x >= framebufferWidth
             || x+width <= 0
@@ -2399,7 +2440,7 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
         for (GLint y_inside_subrect = 0; y_inside_subrect < subrect_height; ++y_inside_subrect) {
             GLint subrect_x_in_dest_buffer = subrect_x - x;
             GLint subrect_y_in_dest_buffer = subrect_y - y;
-            memcpy(static_cast<GLubyte*>(data)
+            memcpy(static_cast<GLubyte*>(validDataPtr)
                      + checked_alignedRowSize.value() * (subrect_y_in_dest_buffer + y_inside_subrect)
                      + bytesPerPixel * subrect_x_in_dest_buffer, // destination
                    subrect_data + subrect_alignedRowSize * y_inside_subrect, // source
@@ -2423,14 +2464,14 @@ WebGLContext::ReadPixels(GLint x, GLint y, GLsizei width,
         if (needAlphaFixup) {
             if (format == LOCAL_GL_ALPHA && type == LOCAL_GL_UNSIGNED_BYTE) {
                 // this is easy; it's an 0xff memset per row
-                uint8_t *row = static_cast<uint8_t*>(data);
+                uint8_t *row = static_cast<uint8_t*>(validDataPtr);
                 for (GLint j = 0; j < height; ++j) {
                     memset(row, 0xff, checked_plainRowSize.value());
                     row += checked_alignedRowSize.value();
                 }
             } else if (format == LOCAL_GL_RGBA && type == LOCAL_GL_UNSIGNED_BYTE) {
                 // this is harder, we need to just set the alpha byte here
-                uint8_t *row = static_cast<uint8_t*>(data);
+                uint8_t *row = static_cast<uint8_t*>(validDataPtr);
                 for (GLint j = 0; j < height; ++j) {
                     uint8_t *rowp = row;
 #ifdef IS_LITTLE_ENDIAN
@@ -3382,9 +3423,82 @@ WebGLContext::CompressedTexImage2D(GLenum target, GLint level, GLenum internalfo
 }
 
 void
+WebGLContext::CompressedTexImage2D(GLenum target, GLint level, GLenum internalformat,
+                                   GLsizei width, GLsizei height, GLint border,
+                                   const ArrayBuffer& data, WebGLintptr start, WebGLsizeiptr length)
+{
+    if (IsContextLost())
+        return;
+
+    if (!IsExtensionEnabled(WEBGL_array_buffer_data))
+        return ErrorInvalidOperation("readPixels: WEBGL_array_buffer_data is not enabled");
+
+    if (!ValidateTexImage2DTarget(target, width, height, "compressedTexImage2D")) {
+        return;
+    }
+
+    WebGLTexture *tex = activeBoundTextureForTarget(target);
+    if (!tex) {
+        ErrorInvalidOperation("compressedTexImage2D: no texture is bound to this target");
+        return;
+    }
+
+    if (!mCompressedTextureFormats.Contains(internalformat)) {
+        ErrorInvalidEnum("compressedTexImage2D: compressed texture format 0x%x is not supported", internalformat);
+        return;
+    }
+
+    if (border) {
+        ErrorInvalidValue("compressedTexImage2D: border is not 0");
+        return;
+    }
+
+    if (!CheckArrayBufferStartAndLength("compressedTexImage2D", data, start, length))
+        return;
+
+    if (!ValidateCompressedTextureSize(target, level, internalformat, width, height, length, "compressedTexImage2D")) {
+        return;
+    }
+
+    gl->fCompressedTexImage2D(target, level, internalformat, width, height, border, length, data.Data() + start);
+    tex->SetImageInfo(target, level, width, height, internalformat, LOCAL_GL_UNSIGNED_BYTE,
+                      WebGLImageDataStatus::InitializedImageData);
+
+    ReattachTextureToAnyFramebufferToWorkAroundBugs(tex, level);
+}
+
+void
 WebGLContext::CompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset,
                                       GLint yoffset, GLsizei width, GLsizei height,
                                       GLenum format, const ArrayBufferView& view)
+{
+    CompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format,
+                            view.Data(), view.Length());
+}
+
+void
+WebGLContext::CompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset,
+                                      GLint yoffset, GLsizei width, GLsizei height,
+                                      GLenum format,
+                                      const ArrayBuffer& data, WebGLintptr start, WebGLintptr length)
+{
+    if (IsContextLost())
+        return;
+
+    if (!IsExtensionEnabled(WEBGL_array_buffer_data))
+        return ErrorInvalidOperation("readPixels: WEBGL_array_buffer_data is not enabled");
+
+    if (!CheckArrayBufferStartAndLength("compressedTexSubImage2D", data, start, length))
+        return;
+
+    CompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format,
+                            data.Data() + start, length);
+}
+
+void
+WebGLContext::CompressedTexSubImage2D_base(GLenum target, GLint level, GLint xoffset,
+                                           GLint yoffset, GLsizei width, GLsizei height,
+                                           GLenum format, const void *validDataPtr, uint32_t validDataLen)
 {
     if (IsContextLost()) {
         return;
@@ -3418,8 +3532,7 @@ WebGLContext::CompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset,
         return;
     }
 
-    uint32_t byteLength = view.Length();
-    if (!ValidateCompressedTextureSize(target, level, format, width, height, byteLength, "compressedTexSubImage2D")) {
+    if (!ValidateCompressedTextureSize(target, level, format, width, height, validDataLen, "compressedTexSubImage2D")) {
         return;
     }
 
@@ -3478,9 +3591,7 @@ WebGLContext::CompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset,
         tex->DoDeferredImageInitialization(target, level);
     }
 
-    gl->fCompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, byteLength, view.Data());
-
-    return;
+    gl->fCompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, validDataLen, validDataPtr);
 }
 
 JS::Value
@@ -3747,9 +3858,15 @@ WebGLContext::TexImage2D_base(GLenum target, GLint level, GLenum internalformat,
         }
     }
 
-    uint32_t dstTexelSize = 0;
-    if (!ValidateTexFormatAndType(format, type, jsArrayType, &dstTexelSize, "texImage2D"))
+    uint32_t dstTexelSize = 0, dstTexelAlignment = 0;
+    if (!ValidateTexFormatAndType(format, type, jsArrayType, &dstTexelSize, &dstTexelAlignment, "texImage2D"))
         return;
+
+    if (jsArrayType == -1) {
+        // we ignore the type, but we must be aligned
+        if ((reinterpret_cast<uintptr_t>(data) & (dstTexelAlignment-1)) != 0)
+            return ErrorInvalidValue("texImage2D: given start must be aligned to requested data type alignment (%d)", dstTexelAlignment);
+    }
 
     WebGLTexelFormat dstFormat = GetWebGLTexelFormat(format, type);
     WebGLTexelFormat actualSrcFormat = srcFormat == WebGLTexelFormat::Auto ? dstFormat : srcFormat;
@@ -3863,11 +3980,40 @@ WebGLContext::TexImage2D(GLenum target, GLint level,
     if (IsContextLost())
         return;
 
-    return TexImage2D_base(target, level, internalformat, width, height, 0, border, format, type,
-                           pixels.IsNull() ? 0 : pixels.Value().Data(),
-                           pixels.IsNull() ? 0 : pixels.Value().Length(),
-                           pixels.IsNull() ? -1 : (int)JS_GetArrayBufferViewType(pixels.Value().Obj()),
-                           WebGLTexelFormat::Auto, false);
+    if (pixels.IsNull()) {
+        TexImage2D_base(target, level, internalformat, width, height, 0, border, format, type,
+                        0, 0, -1,
+                        WebGLTexelFormat::Auto, false);
+    } else {
+        TexImage2D_base(target, level, internalformat, width, height, 0, border, format, type,
+                        pixels.Value().Data(),
+                        pixels.Value().Length(),
+                        (int)JS_GetArrayBufferViewType(pixels.Value().Obj()),
+                        WebGLTexelFormat::Auto, false);
+    }
+}
+
+void
+WebGLContext::TexImage2D(GLenum target, GLint level,
+                         GLenum internalformat, GLsizei width,
+                         GLsizei height, GLint border, GLenum format,
+                         GLenum type,
+                         const ArrayBuffer &pixels, WebGLintptr start, WebGLsizeiptr length,
+                         ErrorResult& rv)
+{
+    if (IsContextLost())
+        return;
+
+    if (!IsExtensionEnabled(WEBGL_array_buffer_data))
+        return ErrorInvalidOperation("readPixels: WEBGL_array_buffer_data is not enabled");
+
+    if (!CheckArrayBufferStartAndLength("texImage2D", pixels, start, length))
+        return;
+
+    TexImage2D_base(target, level, internalformat, width, height, 0, border, format, type,
+                    pixels.Data() + start, pixels.Length(),
+                    -1,
+                    WebGLTexelFormat::Auto, false);
 }
 
 void
@@ -3928,9 +4074,15 @@ WebGLContext::TexSubImage2D_base(GLenum target, GLint level,
         return ErrorInvalidOperation("texSubImage2D: format");
     }
 
-    uint32_t dstTexelSize = 0;
-    if (!ValidateTexFormatAndType(format, type, jsArrayType, &dstTexelSize, "texSubImage2D"))
+    uint32_t dstTexelSize = 0, dstTexelAlignment = 0;
+    if (!ValidateTexFormatAndType(format, type, jsArrayType, &dstTexelSize, &dstTexelAlignment, "texSubImage2D"))
         return;
+
+    if (jsArrayType == -1) {
+        // we ignore the type, but we must be aligned
+        if ((reinterpret_cast<uintptr_t>(pixels) & (dstTexelAlignment-1)) != 0)
+            return ErrorInvalidValue("texSubImage2D: given start must be aligned to requested data type alignment (%d)", dstTexelAlignment);
+    }
 
     WebGLTexelFormat dstFormat = GetWebGLTexelFormat(format, type);
     WebGLTexelFormat actualSrcFormat = srcFormat == WebGLTexelFormat::Auto ? dstFormat : srcFormat;
@@ -4029,6 +4181,30 @@ WebGLContext::TexSubImage2D(GLenum target, GLint level,
                               width, height, 0, format, type,
                               pixels.Value().Data(), pixels.Value().Length(),
                               JS_GetArrayBufferViewType(pixels.Value().Obj()),
+                              WebGLTexelFormat::Auto, false);
+}
+
+void
+WebGLContext::TexSubImage2D(GLenum target, GLint level,
+                            GLint xoffset, GLint yoffset,
+                            GLsizei width, GLsizei height,
+                            GLenum format, GLenum type,
+                            const ArrayBuffer &pixels, WebGLintptr start, WebGLsizeiptr length,
+                            ErrorResult& rv)
+{
+    if (IsContextLost())
+        return;
+
+    if (!IsExtensionEnabled(WEBGL_array_buffer_data))
+        return ErrorInvalidOperation("readPixels: WEBGL_array_buffer_data is not enabled");
+
+    if (!CheckArrayBufferStartAndLength(pixels, start, length))
+        return;
+
+    return TexSubImage2D_base(target, level, xoffset, yoffset,
+                              width, height, 0, format, type,
+                              pixels.Data() + start, length,
+                              -1,
                               WebGLTexelFormat::Auto, false);
 }
 

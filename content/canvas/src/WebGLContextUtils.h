@@ -44,6 +44,29 @@ WebGLContext::WebGLObjectAsJSObject(JSContext *cx, const WebGLObjectType *object
     return &v.toObject();
 }
 
+bool
+WebGLContext::CheckArrayBufferStartAndLength(const char *func, const ArrayBuffer& data, WebGLintptr start, WebGLsizeiptr length)
+{
+    if (start < 0) {
+        ErrorInvalidValue("%s: start cannot be less than 0", func);
+        return false;
+    }
+
+    CheckedInt<WebGLsizeiptr> checked_neededByteLength = CheckedInt<WebGLsizeiptr>(start) + length;
+    if (!checked_neededByteLength.isValid()) {
+        ErrorInvalidValue("%s: integer overflow computing the needed byte length", func);
+        return false;
+    }
+
+    if (checked_neededByteLength.value() > data.Length()) {
+        ErrorInvalidValue("%s: not enough data - requested start and length requires %d bytes, but buffer only has %d bytes",
+                          func, checked_neededByteLength.value(), data.Length());
+        return false;
+    }
+
+    return true;
+}
+
 } // namespace mozilla
 
 #endif // WEBGLCONTEXTUTILS_H_

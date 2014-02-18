@@ -239,6 +239,50 @@ public:
     DECL_WEBGL_EXTENSION_GOOP
 };
 
+class WebGLExtensionArrayBufferData
+    : public WebGLExtensionBase
+{
+public:
+    WebGLExtensionArrayBufferData(WebGLContext* context);
+    virtual ~WebGLExtensionArrayBufferData();
+
+    void BufferDataWEBGL(GLenum target,
+                         const dom::ArrayBuffer &data,
+                         WebGLintptr start, WebGLsizeiptr size,
+                         GLenum usage);
+    void BufferSubDataWEBGL(GLenum target,
+                            WebGLintptr offset,
+                            const dom::ArrayBuffer &data,
+                            WebGLintptr start, WebGLsizeiptr size);
+
+    void CompressedTexImage2DWEBGL(GLenum target, GLint level, GLenum internalformat,
+                                   GLsizei width, GLsizei height, GLint border,
+                                   const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length);
+    void CompressedTexSubImage2DWEBGL(GLenum target, GLint level,
+                                      GLint xoffset, GLint yoffset,
+                                      GLsizei width, GLsizei height, GLenum format,
+                                      const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length);
+
+    void readPixelsWEBGL(GLint x, GLint y, GLsizei width, GLsizei height, 
+                         GLenum format, GLenum type,
+                         const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
+                         ErrorResult& rv);
+
+    void texImage2DWEBGL(GLenum target, GLint level, GLenum internalformat, 
+                         GLsizei width, GLsizei height, GLint border, GLenum format, 
+                         GLenum type,
+                         const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
+                         ErrorResult& rv);
+
+    void texSubImage2DWEBGL(GLenum target, GLint level, GLint xoffset, GLint yoffset, 
+                            GLsizei width, GLsizei height, 
+                            GLenum format, GLenum type,
+                            const dom::ArrayBuffer &data, WebGLintptr start, WebGLsizeiptr length,
+                            ErrorResult& rv);
+
+    DECL_WEBGL_EXTENSION_GOOP
+};
+
 } // namespace mozilla
 
 #endif // WEBGLEXTENSIONS_H_
