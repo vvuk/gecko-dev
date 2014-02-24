@@ -428,11 +428,6 @@ public:
   virtual void PrintInfo(nsACString& aTo, const char* aPrefix);
 
   /**
-   * Cast to a TextureHost for each backend.
-   */
-  virtual TextureHostOGL* AsHostOGL() { return nullptr; }
-
-  /**
    * Indicates whether the TextureHost implementation is backed by an
    * in-memory buffer. The consequence of this is that locking the
    * TextureHost does not contend with locking the texture on the client side.
