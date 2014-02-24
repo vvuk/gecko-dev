@@ -15,11 +15,13 @@
 #include "mozilla/hal_sandbox/PHal.h"   // for ScreenConfiguration
 #include "mozilla/layers/CompositableClient.h"  // for CompositableChild, etc
 #include "mozilla/layers/ContentClient.h"  // for ContentClientRemote
+#include "mozilla/layers/TextureClientPool.h" // for TextureClientPool
 #include "mozilla/layers/ISurfaceAllocator.h"
 #include "mozilla/layers/LayersMessages.h"  // for EditReply, etc
 #include "mozilla/layers/LayersSurfaces.h"  // for SurfaceDescriptor
 #include "mozilla/layers/PLayerChild.h"  // for PLayerChild
 #include "mozilla/layers/LayerTransactionChild.h"
+#include "TiledLayerBuffer.h"
 #include "nsAString.h"
 #include "nsIWidget.h"                  // for nsIWidget
 #include "nsTArray.h"                   // for AutoInfallibleTArray
@@ -33,6 +35,11 @@ using namespace mozilla::gfx;
 
 namespace mozilla {
 namespace layers {
+
+TextureClientPoolMember::TextureClientPoolMember(SurfaceFormat aFormat, TextureClientPool* aTexturePool)
+  : mFormat(aFormat)
+  , mTexturePool(aTexturePool)
+{}
 
 ClientLayerManager::ClientLayerManager(nsIWidget* aWidget)
   : mPhase(PHASE_NONE)
@@ -53,6 +60,8 @@ ClientLayerManager::~ClientLayerManager()
   mRoot = nullptr;
 
   MOZ_COUNT_DTOR(ClientLayerManager);
+
+  mTexturePools.clear();
 }
 
 int32_t
@@ -221,6 +230,11 @@ ClientLayerManager::EndTransaction(DrawThebesLayerCallback aCallback,
     mIsRepeatTransaction = false;
   } else {
     MakeSnapshotIfRequired();
+  }
+
+  for (const TextureClientPoolMember* item = mTexturePools.getFirst();
+       item; item = item->getNext()) {
+    item->mTexturePool->ReturnDeferredClients();
   }
 }
 
@@ -426,6 +440,26 @@ ClientLayerManager::SetIsFirstPaint()
   mForwarder->SetIsFirstPaint();
 }
 
+TextureClientPool*
+ClientLayerManager::GetTexturePool(SurfaceFormat aFormat)
+{
+  for (const TextureClientPoolMember* item = mTexturePools.getFirst();
+       item; item = item->getNext()) {
+    if (item->mFormat == aFormat) {
+      return item->mTexturePool;
+    }
+  }
+
+  TextureClientPoolMember* texturePoolMember =
+    new TextureClientPoolMember(aFormat,
+      new TextureClientPool(aFormat, IntSize(TILEDLAYERBUFFER_TILE_SIZE,
+                                             TILEDLAYERBUFFER_TILE_SIZE),
+                            mForwarder));
+  mTexturePools.insertBack(texturePoolMember);
+
+  return texturePoolMember->mTexturePool;
+}
+
 void
 ClientLayerManager::ClearCachedResources(Layer* aSubtree)
 {
@@ -437,6 +471,10 @@ ClientLayerManager::ClearCachedResources(Layer* aSubtree)
     ClearLayer(aSubtree);
   } else if (mRoot) {
     ClearLayer(mRoot);
+  }
+  for (const TextureClientPoolMember* item = mTexturePools.getFirst();
+       item; item = item->getNext()) {
+    item->mTexturePool->Clear();
   }
 }
 

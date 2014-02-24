@@ -418,6 +418,13 @@ public:
   virtual const char *Name() { return "TextureHost"; }
   virtual void PrintInfo(nsACString& aTo, const char* aPrefix);
 
+  /**
+   * Indicates whether the TextureHost implementation is backed by an
+   * in-memory buffer. The consequence of this is that locking the
+   * TextureHost does not contend with locking the texture on the client side.
+   */
+  virtual bool HasInternalBuffer() { return false; }
+
 protected:
   TextureFlags mFlags;
   RefPtr<CompositableBackendSpecificData> mCompositableBackendData;
@@ -471,6 +478,8 @@ public:
   virtual gfx::IntSize GetSize() const MOZ_OVERRIDE { return mSize; }
 
   virtual TemporaryRef<gfx::DataSourceSurface> GetAsSurface() MOZ_OVERRIDE;
+
+  virtual bool HasInternalBuffer() MOZ_OVERRIDE { return true; }
 
 protected:
   bool Upload(nsIntRegion *aRegion = nullptr);

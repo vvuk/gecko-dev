@@ -42,6 +42,7 @@ class PlanarYCbCrData;
 class Image;
 class PTextureChild;
 class TextureChild;
+class BufferTextureClient;
 
 /**
  * TextureClient is the abstraction that allows us to share data between the
@@ -287,6 +288,39 @@ public:
    */
   void ForceRemove();
 
+  /**
+   * Copies the given rect of the TextureClient to the destination
+   * TextureClient, at the given point.
+   * If aRect is nullptr, the entire TextureClient will be copied.
+   * If aPoint is nullptr, the rect will be copied to (0, 0).
+   * Both textures must be locked when this method is called.
+   *
+   * Returns true on success.
+   */
+  virtual bool CopyToTextureClient(TextureClient* aTarget,
+                                   const gfx::IntRect* aRect = nullptr,
+                                   const gfx::IntPoint* aPoint = nullptr);
+
+  /**
+   * Indicates whether the TextureClient implementation is backed by an
+   * in-memory buffer. The consequence of this is that locking the
+   * TextureClient does not contend with composition of the texture on the
+   * host side.
+   */
+  virtual bool HasInternalBuffer() { return false; }
+
+  static TemporaryRef<BufferTextureClient>
+  CreateBufferTextureClient(ISurfaceAllocator* aAllocator,
+                            gfx::SurfaceFormat aFormat,
+                            TextureFlags aFlags = TEXTURE_FLAGS_DEFAULT);
+
+  // If we return a non-null TextureClient, then AsTextureClientDrawTarget will
+  // always be non-null.
+  static TemporaryRef<TextureClient>
+  CreateTextureClientForDrawing(ISurfaceAllocator* aAllocator,
+                                gfx::SurfaceFormat aFormat,
+                                TextureFlags aTextureFlags);
+
 private:
   /**
    * Called once, just before the destructor.
@@ -340,7 +374,7 @@ class BufferTextureClient : public TextureClient
                           , public TextureClientDrawTarget
 {
 public:
-  BufferTextureClient(CompositableClient* aCompositable, gfx::SurfaceFormat aFormat,
+  BufferTextureClient(ISurfaceAllocator* aAllocator, gfx::SurfaceFormat aFormat,
                       TextureFlags aFlags);
 
   virtual ~BufferTextureClient();
@@ -396,9 +430,13 @@ public:
 
   virtual size_t GetBufferSize() const = 0;
 
+  virtual bool HasInternalBuffer() MOZ_OVERRIDE { return true; }
+
+  ISurfaceAllocator* GetAllocator() const;
+
 protected:
   RefPtr<gfx::DrawTarget> mDrawTarget;
-  CompositableClient* mCompositable;
+  RefPtr<ISurfaceAllocator> mAllocator;
   gfx::SurfaceFormat mFormat;
   gfx::IntSize mSize;
   OpenMode mOpenMode;
@@ -413,7 +451,7 @@ protected:
 class ShmemTextureClient : public BufferTextureClient
 {
 public:
-  ShmemTextureClient(CompositableClient* aCompositable, gfx::SurfaceFormat aFormat,
+  ShmemTextureClient(ISurfaceAllocator* aAllocator, gfx::SurfaceFormat aFormat,
                      TextureFlags aFlags);
 
   ~ShmemTextureClient();
@@ -429,8 +467,6 @@ public:
   virtual bool IsAllocated() const MOZ_OVERRIDE { return mAllocated; }
 
   virtual TextureClientData* DropTextureData() MOZ_OVERRIDE;
-
-  ISurfaceAllocator* GetAllocator() const;
 
   mozilla::ipc::Shmem& GetShmem() { return mShmem; }
 
@@ -448,7 +484,7 @@ protected:
 class MemoryTextureClient : public BufferTextureClient
 {
 public:
-  MemoryTextureClient(CompositableClient* aCompositable, gfx::SurfaceFormat aFormat,
+  MemoryTextureClient(ISurfaceAllocator* aAllocator, gfx::SurfaceFormat aFormat,
                       TextureFlags aFlags);
 
   ~MemoryTextureClient();

@@ -37,6 +37,8 @@ protected:
    * thread (ImageBridge for instance).
    */
   virtual bool IsAsync() const { return false; }
+
+  virtual bool IsCrossProcess() const MOZ_OVERRIDE;
 };
 
 } // namespace

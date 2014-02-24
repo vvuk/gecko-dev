@@ -143,6 +143,8 @@ public:
    */
   virtual void OnDetach() {}
 
+  virtual void ClearCachedResources() {}
+
 protected:
   CompositableChild* mCompositableChild;
   CompositableForwarder* mForwarder;

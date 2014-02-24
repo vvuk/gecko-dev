@@ -182,7 +182,7 @@ private:
   bool IsPlaceholder(Tile aTile) const { return aTile == AsDerived().GetPlaceholderTile(); }
 };
 
-class BasicTiledLayerBuffer;
+class ClientTiledLayerBuffer;
 class SurfaceDescriptorTiles;
 class ISurfaceAllocator;
 
@@ -195,11 +195,11 @@ public:
    * Update the current retained layer with the updated layer data.
    * It is expected that the tiles described by aTiledDescriptor are all in the
    * ReadLock state, so that the locks can be adopted when recreating a
-   * BasicTiledLayerBuffer locally. This lock will be retained until the buffer
+   * ClientTiledLayerBuffer locally. This lock will be retained until the buffer
    * has completed uploading.
    */
-  virtual void PaintedTiledLayerBuffer(ISurfaceAllocator* aAllocator,
-                                       const SurfaceDescriptorTiles& aTiledDescriptor) = 0;
+  virtual void UseTiledLayerBuffer(ISurfaceAllocator* aAllocator,
+                                   const SurfaceDescriptorTiles& aTiledDescriptor) = 0;
 
   /**
    * If some part of the buffer is being rendered at a lower precision, this
@@ -439,7 +439,6 @@ TiledLayerBuffer<Derived, Tile>::Update(const nsIntRegion& aNewValidRegion,
   }
 
   // Throw away any tiles we didn't recycle
-  // TODO: Add a tile pool
   while (oldRetainedTiles.Length() > 0) {
     Tile oldTile = oldRetainedTiles[oldRetainedTiles.Length()-1];
     oldRetainedTiles.RemoveElementAt(oldRetainedTiles.Length()-1);

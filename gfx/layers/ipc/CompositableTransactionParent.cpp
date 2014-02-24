@@ -27,7 +27,7 @@
 namespace mozilla {
 namespace layers {
 
-class BasicTiledLayerBuffer;
+class ClientTiledLayerBuffer;
 class Compositor;
 
 template<typename T>
@@ -61,6 +61,13 @@ bool ScheduleComposition(const T& op)
   }
   cp->ScheduleComposition();
   return true;
+}
+
+bool
+CompositableParentManager::IsCrossProcess() const
+{
+  MOZ_ASSERT(false, "TODO[nical] - Implement me!");
+  return false;
 }
 
 bool
@@ -218,9 +225,9 @@ CompositableParentManager::ReceiveCompositableUpdate(const CompositableOperation
       compositable->SetPictureRect(op.picture());
       break;
     }
-    case CompositableOperation::TOpPaintTiledLayerBuffer: {
+    case CompositableOperation::TOpUseTiledLayerBuffer: {
       MOZ_LAYERS_LOG(("[ParentSide] Paint TiledLayerBuffer"));
-      const OpPaintTiledLayerBuffer& op = aEdit.get_OpPaintTiledLayerBuffer();
+      const OpUseTiledLayerBuffer& op = aEdit.get_OpUseTiledLayerBuffer();
       CompositableParent* compositableParent = static_cast<CompositableParent*>(op.compositableParent());
       CompositableHost* compositable =
         compositableParent->GetCompositableHost();
@@ -229,7 +236,7 @@ CompositableParentManager::ReceiveCompositableUpdate(const CompositableOperation
       NS_ASSERTION(tileComposer, "compositable is not a tile composer");
 
       const SurfaceDescriptorTiles& tileDesc = op.tileLayerDescriptor();
-      tileComposer->PaintedTiledLayerBuffer(this, tileDesc);
+      tileComposer->UseTiledLayerBuffer(this, tileDesc);
       break;
     }
     case CompositableOperation::TOpRemoveTexture: {

@@ -169,7 +169,9 @@ CompositableHost::Create(const TextureInfo& aTextureInfo)
   default:
     MOZ_CRASH("Unknown CompositableType");
   }
-  if (result) {
+  // We know that Tiled buffers don't use the compositable backend-specific
+  // data, so don't bother creating it.
+  if (result && aTextureInfo.mCompositableType != BUFFER_TILED) {
     RefPtr<CompositableBackendSpecificData> data = CreateCompositableBackendSpecificDataOGL();
     result->SetCompositableBackendSpecificData(data);
   }

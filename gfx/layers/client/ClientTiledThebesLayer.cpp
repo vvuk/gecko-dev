@@ -37,6 +37,12 @@ ClientTiledThebesLayer::~ClientTiledThebesLayer()
 }
 
 void
+ClientTiledThebesLayer::ClearCachedResources()
+{
+  mContentClient->ClearCachedResources();
+}
+
+void
 ClientTiledThebesLayer::FillSpecificAttributes(SpecificLayerAttributes& aAttrs)
 {
   aAttrs = ThebesLayerAttributes(GetValidRegion());
@@ -188,7 +194,7 @@ ClientTiledThebesLayer::RenderLayer()
                                              callback, data);
 
     ClientManager()->Hold(this);
-    mContentClient->LockCopyAndWrite(TiledContentClient::TILED_BUFFER);
+    mContentClient->UseTiledLayerBuffer(TiledContentClient::TILED_BUFFER);
 
     return;
   }
@@ -261,7 +267,7 @@ ClientTiledThebesLayer::RenderLayer()
 
     if (updatedBuffer) {
       ClientManager()->Hold(this);
-      mContentClient->LockCopyAndWrite(TiledContentClient::TILED_BUFFER);
+      mContentClient->UseTiledLayerBuffer(TiledContentClient::TILED_BUFFER);
 
       // If there are low precision updates, mark the paint as unfinished and
       // request a repeat transaction.
@@ -330,7 +336,7 @@ ClientTiledThebesLayer::RenderLayer()
   // and the associated resources can be freed.
   if (updatedLowPrecision) {
     ClientManager()->Hold(this);
-    mContentClient->LockCopyAndWrite(TiledContentClient::LOW_PRECISION_TILED_BUFFER);
+    mContentClient->UseTiledLayerBuffer(TiledContentClient::LOW_PRECISION_TILED_BUFFER);
   }
 
   EndPaint(false);

@@ -49,11 +49,12 @@ class Compositor;
 TemporaryRef<CompositableBackendSpecificData>
 CreateCompositableBackendSpecificDataOGL()
 {
-#ifdef MOZ_WIDGET_GONK
+/*#ifdef MOZ_WIDGET_GONK
   return new CompositableDataGonkOGL();
 #else
   return nullptr;
-#endif
+#endif*/
+  return nullptr;
 }
 
 TemporaryRef<DeprecatedTextureHost>

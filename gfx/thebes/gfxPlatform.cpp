@@ -2074,6 +2074,8 @@ static bool sPrefLayersDrawFPS = false;
 static bool sPrefLayersDump = false;
 static bool sPrefLayersScrollGraph = false;
 static bool sPrefLayersEnableTiles = false;
+static bool sPrefLayersForcePerTileDrawing = false;
+static bool sPrefLayersForceShmemTiles = false;
 static bool sLayersSupportsD3D9 = false;
 static int  sPrefLayoutFrameRate = -1;
 static int  sPrefLayersCompositionFrameRate = -1;
@@ -2105,6 +2107,8 @@ InitLayersAccelerationPrefs()
     sPrefLayersDump = Preferences::GetBool("layers.dump", false);
     sPrefLayersScrollGraph = Preferences::GetBool("layers.scroll-graph", false);
     sPrefLayersEnableTiles = Preferences::GetBool("layers.enable-tiles", false);
+    sPrefLayersForcePerTileDrawing = Preferences::GetBool("layers.force-per-tile-drawing", false);
+    sPrefLayersForceShmemTiles = Preferences::GetBool("layers.force-shmem-tiles", false);
     sPrefLayoutFrameRate = Preferences::GetInt("layout.frame_rate", -1);
     sPrefLayersCompositionFrameRate = Preferences::GetInt("layers.offmainthreadcomposition.frame-rate", -1);
     sBufferRotationEnabled = Preferences::GetBool("layers.bufferrotation.enabled", true);
@@ -2231,6 +2235,20 @@ gfxPlatform::GetPrefLayersEnableTiles()
 {
   InitLayersAccelerationPrefs();
   return sPrefLayersEnableTiles;
+}
+
+bool
+gfxPlatform::GetPrefLayersForcePerTileDrawing()
+{
+  InitLayersAccelerationPrefs();
+  return sPrefLayersForcePerTileDrawing;
+}
+
+bool
+gfxPlatform::GetPrefLayersForceShmemTiles()
+{
+  InitLayersAccelerationPrefs();
+  return sPrefLayersForceShmemTiles;
 }
 
 int

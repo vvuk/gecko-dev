@@ -92,6 +92,7 @@ GrallocTextureSourceOGL::GrallocTextureSourceOGL(CompositorOGL* aCompositor,
   : mCompositor(aCompositor)
   , mGraphicBuffer(aGraphicBuffer)
   , mEGLImage(0)
+  , mTexture(0)
   , mFormat(aFormat)
   , mNeedsReset(true)
 {
@@ -104,7 +105,8 @@ GrallocTextureSourceOGL::~GrallocTextureSourceOGL()
   mCompositor = nullptr;
 }
 
-void GrallocTextureSourceOGL::BindTexture(GLenum aTextureUnit)
+void
+GrallocTextureSourceOGL::BindTexture(GLenum aTextureUnit)
 {
   /*
    * The job of this function is to ensure that the texture is tied to the
@@ -122,17 +124,32 @@ void GrallocTextureSourceOGL::BindTexture(GLenum aTextureUnit)
 
   gl()->fActiveTexture(aTextureUnit);
   gl()->fBindTexture(textureTarget, tex);
+  gl()->fActiveTexture(LOCAL_GL_TEXTURE0);
+}
+
+void GrallocTextureSourceOGL::Lock()
+{
+  MOZ_ASSERT(IsValid());
+
+  CompositorOGLGonkBackendSpecificData* backendData =
+    static_cast<CompositorOGLGonkBackendSpecificData*>(mCompositor->GetCompositorBackendSpecificData());
+  mTexture = backendData->GetTexture();
+
+  GLuint textureTarget = GetTextureTarget();
+
+  gl()->MakeCurrent();
+  gl()->fActiveTexture(LOCAL_GL_TEXTURE0);
+  gl()->fBindTexture(textureTarget, mTexture);
   if (!mEGLImage) {
     mEGLImage = EGLImageCreateFromNativeBuffer(gl(), mGraphicBuffer->getNativeBuffer());
   }
   gl()->fEGLImageTargetTexture2D(textureTarget, mEGLImage);
-  gl()->fActiveTexture(LOCAL_GL_TEXTURE0);
 }
 
 bool
 GrallocTextureSourceOGL::IsValid() const
 {
-  return !!gl() && !!mGraphicBuffer.get();
+  return !!gl() && !!mGraphicBuffer.get() && !!mCompositor;
 }
 
 gl::GLContext*
@@ -172,46 +189,6 @@ GrallocTextureSourceOGL::GetFormat() const {
 void
 GrallocTextureSourceOGL::SetCompositableBackendSpecificData(CompositableBackendSpecificData* aBackendData)
 {
-  if (!aBackendData) {
-    mCompositableBackendData = nullptr;
-    DeallocateDeviceData();
-    return;
-  }
-
-  if (mCompositableBackendData != aBackendData) {
-    mNeedsReset = true;
-  }
-
-  if (!mNeedsReset) {
-    // Update binding to the EGLImage
-    gl()->MakeCurrent();
-    GLuint tex = GetGLTexture();
-    GLuint textureTarget = GetTextureTarget();
-    gl()->fActiveTexture(LOCAL_GL_TEXTURE0);
-    gl()->fBindTexture(textureTarget, tex);
-    gl()->fEGLImageTargetTexture2D(textureTarget, mEGLImage);
-    return;
-  }
-
-  mCompositableBackendData = aBackendData;
-
-  if (!mCompositor) {
-    return;
-  }
-
-  // delete old EGLImage
-  DeallocateDeviceData();
-
-  gl()->MakeCurrent();
-  GLuint tex = GetGLTexture();
-  GLuint textureTarget = GetTextureTarget();
-
-  gl()->fActiveTexture(LOCAL_GL_TEXTURE0);
-  gl()->fBindTexture(textureTarget, tex);
-  // create new EGLImage
-  mEGLImage = EGLImageCreateFromNativeBuffer(gl(), mGraphicBuffer->getNativeBuffer());
-  gl()->fEGLImageTargetTexture2D(textureTarget, mEGLImage);
-  mNeedsReset = false;
 }
 
 gfx::IntSize
@@ -273,7 +250,11 @@ GrallocTextureHostOGL::SetCompositor(Compositor* aCompositor)
 bool
 GrallocTextureHostOGL::Lock()
 {
-  return IsValid();
+  if (IsValid()) {
+    mTextureSource->Lock();
+    return true;
+  }
+  return false;
 }
 
 void
@@ -368,8 +349,7 @@ GrallocTextureSourceOGL::GetAsSurface() {
 GLuint
 GrallocTextureSourceOGL::GetGLTexture()
 {
-  mCompositableBackendData->SetCompositor(mCompositor);
-  return static_cast<CompositableDataGonkOGL*>(mCompositableBackendData.get())->GetTexture();
+  return mTexture;
 }
 
 void
