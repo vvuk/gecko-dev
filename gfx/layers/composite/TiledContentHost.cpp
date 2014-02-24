@@ -63,10 +63,8 @@ TiledLayerBufferComposite::TiledLayerBufferComposite(ISurfaceAllocator* aAllocat
           // The corresponding AddRef is in TiledClient::GetTileDescriptor
           sharedLock->Release();
         }
-        MOZ_ASSERT(sharedLock);
-        if (sharedLock) {
-          mRetainedTiles.AppendElement(TileHost(sharedLock, texture));
-        }
+
+        mRetainedTiles.AppendElement(TileHost(sharedLock, texture));
         break;
       }
       default:

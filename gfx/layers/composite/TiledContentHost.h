@@ -91,7 +91,7 @@ public:
     if (IsPlaceholderTile()) {
       return;
     }
-    NS_ASSERTION(mSharedLock != nullptr, "ReadUnlock with no gfxSharedReadLock");
+
     if (mSharedLock) {
       mSharedLock->ReadUnlock();
     }

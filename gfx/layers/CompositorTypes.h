@@ -164,7 +164,9 @@ enum CompositableType
   BUFFER_CONTENT_DIRECT,  // thebes layer interface, double buffering
   BUFFER_CONTENT_INC,     // thebes layer interface, only sends incremental
                           // updates to a texture on the compositor side.
+  // somewhere in the middle
   BUFFER_TILED,           // tiled thebes layer
+  BUFFER_SIMPLE_TILED,
   // the new compositable types
   COMPOSITABLE_IMAGE,     // image with single buffering
   COMPOSITABLE_CONTENT_SINGLE,  // thebes layer interface, single buffering
