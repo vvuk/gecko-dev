@@ -34,8 +34,10 @@ TiledLayerBufferComposite::TiledLayerBufferComposite()
 TiledLayerBufferComposite::TiledLayerBufferComposite(ISurfaceAllocator* aAllocator,
                                                      const SurfaceDescriptorTiles& aDescriptor,
                                                      const nsIntRegion& aOldPaintedRegion)
+  : mFrameResolution(1.0)
+  , mHasDoubleBufferedTiles(false)
+  , mUninitialized(false)
 {
-  mUninitialized = false;
   mValidRegion = aDescriptor.validRegion();
   mPaintedRegion = aDescriptor.paintedRegion();
   mRetainedWidth = aDescriptor.retainedWidth();

@@ -110,6 +110,7 @@ public:
   typedef TiledLayerBuffer<TiledLayerBufferComposite, TileHost>::Iterator Iterator;
 
   TiledLayerBufferComposite();
+
   TiledLayerBufferComposite(ISurfaceAllocator* aAllocator,
                             const SurfaceDescriptorTiles& aDescriptor,
                             const nsIntRegion& aOldPaintedRegion);
@@ -259,8 +260,8 @@ private:
   TiledLayerBufferComposite    mLowPrecisionTiledBuffer;
   TiledLayerBufferComposite    mOldTiledBuffer;
   TiledLayerBufferComposite    mOldLowPrecisionTiledBuffer;
-  bool                         mPendingUpload : 1;
-  bool                         mPendingLowPrecisionUpload : 1;
+  bool                         mPendingUpload;
+  bool                         mPendingLowPrecisionUpload;
 };
 
 }
