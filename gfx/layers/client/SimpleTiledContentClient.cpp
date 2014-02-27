@@ -94,7 +94,7 @@ SimpleTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
 }
 
 SimpleTiledLayerTile
-SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile /*aTile*/,
+SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
                                      const nsIntPoint& aTileOrigin,
                                      const nsIntRegion& aDirtyRegion)
 {
@@ -103,30 +103,85 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile /*aTile*/,
 
   gfx::SurfaceFormat tileFormat = gfxPlatform::GetPlatform()->Optimal2DFormatForContent(GetContentType());
 
-  RefPtr<TextureClient> buffer = mCompositableClient->CreateTextureClientForDrawing(tileFormat, TEXTURE_FLAGS_DEFAULT);
-  buffer->AsTextureClientDrawTarget()->AllocateForSurface(kTileSize, ALLOC_DEFAULT);
+  // if this is true, we're using a separate buffer to do our drawing first
+  bool doBufferedDrawing = true;
+
+  RefPtr<TextureClient> textureClient = mCompositableClient->CreateTextureClientForDrawing(tileFormat, TEXTURE_FLAGS_DEFAULT);
+  // we are making an assumption here...
+  BufferTextureClient *textureClientBuf = (BufferTextureClient*) textureClient->AsTextureClientDrawTarget();
+  bool ok = textureClientBuf->AllocateForSurface(kTileSize, ALLOC_DEFAULT);
+
+  if (!ok) {
+    NS_WARNING("TextureClient allocation failed");
+    return SimpleTiledLayerTile();
+  }
 
   // XXX do we need to clear?
   // XXX do we need to OPEN_READ_WRITE?
-  if (!buffer->Lock(OPEN_WRITE)) {
+  if (!textureClient->Lock(OPEN_WRITE)) {
     NS_WARNING("TextureClient lock failed");
     return SimpleTiledLayerTile();
   }
 
-  RefPtr<DrawTarget> drawTarget = buffer->AsTextureClientDrawTarget()->GetAsDrawTarget();
+  RefPtr<DrawTarget> drawTarget;
 
-  // Pull out a thebes content from the DrawTarget because *mumble*
+  nsRefPtr<gfxImageSurface> clientAsImageSurface;
+  unsigned char *bufferData = nullptr;
+
+  // these are set/updated differently based on doBufferedDrawing
+  nsIntRect drawBounds;
+  nsIntRegion drawRegion;
+  nsIntRegion invalidateRegion;
+
+  if (doBufferedDrawing) {
+    nsRefPtr<gfxASurface> asurf = textureClientBuf->GetAsSurface();
+    clientAsImageSurface = asurf->GetAsImageSurface();
+    int32_t bufferStride = clientAsImageSurface->Stride();
+
+    if (!aTile.mCachedBuffer) {
+      aTile.mCachedBuffer = SharedBuffer::Create(clientAsImageSurface->GetDataSize());
+    }
+    bufferData = (unsigned char*) aTile.mCachedBuffer->Data();
+
+    drawTarget = gfxPlatform::GetPlatform()->CreateDrawTargetForData(bufferData,
+                                                                     kTileSize,
+                                                                     bufferStride,
+                                                                     tileFormat);
+    //drawTarget->ClearRect(Rect(0, 0, TILEDLAYERBUFFER_TILE_SIZE, TILEDLAYERBUFFER_TILE_SIZE));
+
+    drawBounds = aDirtyRegion.GetBounds();
+    drawBounds.ScaleRoundOut(mResolution);
+    drawRegion = nsIntRegion(drawBounds);
+  } else {
+    drawTarget = textureClient->AsTextureClientDrawTarget()->GetAsDrawTarget();
+    //drawTarget->ClearRect(Rect(0, 0, TILEDLAYERBUFFER_TILE_SIZE, TILEDLAYERBUFFER_TILE_SIZE));
+
+    drawBounds = nsIntRect(aTileOrigin.x, aTileOrigin.y, GetScaledTileLength(), GetScaledTileLength());
+    drawRegion = nsIntRegion(drawBounds);
+  }
+
+#if 0
+  __android_log_print(ANDROID_LOG_INFO, "SimpleTiles", "tile [%d %d %d %d] res: %f dirty region: ", aTileOrigin.x, aTileOrigin.y, GetScaledTileLength(), GetScaledTileLength(), mResolution);
+  {
+    nsIntRegionRectIterator it(aDirtyRegion);
+    for (const nsIntRect* rect = it.Next(); rect != nullptr; rect = it.Next()) {
+      __android_log_print(ANDROID_LOG_INFO, "SimpleTiles", " rect %i, %i, %i, %i\n", rect->x, rect->y, rect->width, rect->height);
+    }
+  }
+#endif
+
+  // do the drawing
+
   RefPtr<gfxContext> ctxt = new gfxContext(drawTarget);
 
   ctxt->Scale(mResolution, mResolution);
   ctxt->Translate(gfxPoint(-aTileOrigin.x, -aTileOrigin.y));
 
-  nsIntPoint a = nsIntPoint(aTileOrigin.x, aTileOrigin.y);
   mCallback(mThebesLayer, ctxt,
-            nsIntRegion(nsIntRect(a, nsIntSize(GetScaledTileLength(),
-                                               GetScaledTileLength()))),
+            drawRegion,
             DrawRegionClip::CLIP_NONE,
-            nsIntRegion(), mCallbackData);
+            invalidateRegion,
+            mCallbackData);
 
 #ifdef GFX_SIMP_TILEDLAYER_DEBUG_OVERLAY
   DrawDebugOverlay(drawTarget, TimeStamp::Now(),
@@ -137,14 +192,25 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile /*aTile*/,
   ctxt = nullptr;
   drawTarget = nullptr;
 
-  buffer->Unlock();
+  if (doBufferedDrawing) {
+    memcpy(clientAsImageSurface->Data(), bufferData, clientAsImageSurface->GetDataSize());
+    clientAsImageSurface = nullptr;
+    bufferData = nullptr;
+  }
 
-  if (!mCompositableClient->AddTextureClient(buffer)) {
+  textureClient->Unlock();
+
+  if (!mCompositableClient->AddTextureClient(textureClient)) {
     NS_WARNING("Failed to add tile TextureClient [simple]");
     return SimpleTiledLayerTile();
   }
 
-  return SimpleTiledLayerTile(mManager, buffer);
+  // aTile.mCachedBuffer was set earlier
+  aTile.mTileBuffer = textureClient;
+  aTile.mManager = mManager;
+  aTile.mLastUpdate = TimeStamp::Now();
+
+  return aTile;
 }
 
 SurfaceDescriptorTiles

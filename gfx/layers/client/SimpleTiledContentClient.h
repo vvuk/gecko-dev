@@ -7,6 +7,7 @@
 #define MOZILLA_GFX_SIMPLETILEDCONTENTCLIENT_H
 
 #include "TiledContentClient.h"
+#include "SharedBuffer.h"
 
 namespace mozilla {
 namespace layers {
@@ -24,9 +25,8 @@ struct SimpleTiledLayerTile
 {
   RefPtr<TextureClient> mTileBuffer;
   RefPtr<ClientLayerManager> mManager;
-#ifdef GFX_SIMP_TILEDLAYER_DEBUG_OVERLAY
-  TimeStamp        mLastUpdate;
-#endif
+  nsRefPtr<SharedBuffer> mCachedBuffer;
+  TimeStamp mLastUpdate;
 
   SimpleTiledLayerTile() { }
 
@@ -66,9 +66,6 @@ struct SimpleTiledLayerTile
 
   void Release()
   {
-    // We can't do this, because we have no idea if the compositor is done with it or not.  All we can do
-    // is give up our ref.
-    // mManager->GetTexturePool(mFrontBuffer->AsTextureClientDrawTarget()->GetFormat())->ReturnTextureClient(mTileBuffer);
     mTileBuffer = nullptr;
   }
 };
