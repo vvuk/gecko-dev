@@ -12,6 +12,12 @@
 #include "nsIInterfaceRequestorUtils.h"
 #include "TiledLayerBuffer.h" // For TILEDLAYERBUFFER_TILE_SIZE
 
+#if 0
+#define ALOG(...)  __android_log_print(ANDROID_LOG_INFO, "SimpleTiles", __VA_ARGS__)
+#else
+#define ALOG(...) do { } while (0)
+#endif
+
 namespace mozilla {
 namespace widget {
 
@@ -73,16 +79,19 @@ MaybeAlignAndClampDisplayPort(mozilla::layers::FrameMetrics& aFrameMetrics,
   // Expand the display port to the next tile boundaries, if tiled thebes layers
   // are enabled.
   if (gfxPlatform::GetPrefLayersEnableTiles()) {
+    ALOG("APZC: MACDP before expand: [%f %f %f %f]", displayPort.x, displayPort.y, displayPort.width, displayPort.height);
     displayPort =
       ExpandDisplayPortToTileBoundaries(displayPort + aActualScrollOffset,
                                         aFrameMetrics.LayersPixelsPerCSSPixel())
       - aActualScrollOffset;
+    ALOG("APZC: MACDP after expand: [%f %f %f %f]", displayPort.x, displayPort.y, displayPort.width, displayPort.height);
   }
 
   // Finally, clamp the display port to the expanded scrollable rect.
   CSSRect scrollableRect = aFrameMetrics.GetExpandedScrollableRect();
   displayPort = scrollableRect.Intersect(displayPort + aActualScrollOffset)
     - aActualScrollOffset;
+  ALOG("APZC: MACDP final: [%f %f %f %f]", displayPort.x, displayPort.y, displayPort.width, displayPort.height);
 }
 
 static void
@@ -99,7 +108,7 @@ ScrollFrameTo(nsIScrollableFrame* aFrame, const CSSPoint& aPoint, bool& aSuccess
   aSuccessOut = false;
 
   if (!aFrame) {
-    return CSSPoint();
+    return aPoint;
   }
 
   // If the scrollable frame is currently in the middle of an async or smooth
@@ -143,12 +152,7 @@ APZCCallbackHelper::UpdateRootFrame(nsIDOMWindowUtils* aUtils,
     bool scrollUpdated = false;
     CSSPoint actualScrollOffset = ScrollFrameTo(sf, aMetrics.mScrollOffset, scrollUpdated);
 
-    if (scrollUpdated) {
-        // Correct the display port due to the difference between mScrollOffset and the
-        // actual scroll offset, possibly align it to tile boundaries (if tiled layers are
-        // enabled), and clamp it to the scrollable rect.
-        MaybeAlignAndClampDisplayPort(aMetrics, actualScrollOffset);
-    } else {
+    if (!scrollUpdated) {
         // For whatever reason we couldn't update the scroll offset on the scroll frame,
         // which means the data APZ used for its displayport calculation is stale. Fall
         // back to a sane default behaviour. Note that we don't tile-align the recentered
@@ -157,6 +161,8 @@ APZCCallbackHelper::UpdateRootFrame(nsIDOMWindowUtils* aUtils,
         // more detailed explanation.
         RecenterDisplayPort(aMetrics);
     }
+
+    MaybeAlignAndClampDisplayPort(aMetrics, actualScrollOffset);
     aMetrics.mScrollOffset = actualScrollOffset;
 
     // The mZoom variable on the frame metrics stores the CSS-to-screen scale for this
@@ -214,11 +220,10 @@ APZCCallbackHelper::UpdateSubFrame(nsIContent* aContent,
 
     nsCOMPtr<nsIDOMElement> element = do_QueryInterface(aContent);
     if (element) {
-        if (scrollUpdated) {
-            MaybeAlignAndClampDisplayPort(aMetrics, actualScrollOffset);
-        } else {
+        if (!scrollUpdated) {
             RecenterDisplayPort(aMetrics);
         }
+        MaybeAlignAndClampDisplayPort(aMetrics, actualScrollOffset);
         utils->SetDisplayPortForElement(aMetrics.mDisplayPort.x,
                                         aMetrics.mDisplayPort.y,
                                         aMetrics.mDisplayPort.width,
