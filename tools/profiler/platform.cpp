@@ -825,7 +825,7 @@ void mozilla_sampler_unlock()
 
 bool mozilla_sampler_register_thread(const char* aName, void* stackTop)
 {
-#if defined(MOZ_WIDGET_GONK) && !defined(MOZ_PROFILING)
+#if 0 && defined(MOZ_WIDGET_GONK) && !defined(MOZ_PROFILING)
   // The only way to profile secondary threads on b2g
   // is to build with profiling OR have the profiler
   // running on startup.
