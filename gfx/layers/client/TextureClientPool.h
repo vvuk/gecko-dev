@@ -12,6 +12,7 @@
 #include "TextureClient.h"
 #include "nsITimer.h"
 #include <stack>
+#include <list>
 
 namespace mozilla {
 namespace layers {
@@ -24,7 +25,21 @@ public:
   TextureClientPool(gfx::SurfaceFormat aFormat, gfx::IntSize aSize,
                     ISurfaceAllocator *aAllocator);
 
+  ~TextureClientPool()
+  {
+    for (auto it = mAutoRecycle.begin(); it != mAutoRecycle.end(); ++it) {
+      (*it)->ClearRecycleCallback();
+    }
+  }
+
   TemporaryRef<TextureClient> GetTextureClient();
+
+  /**
+   * Call this immediately after GetTextureClient to replace
+   * ReturnTextureClient. When the last reference is released this object
+   * will be automatically return to the pool.
+   */
+  void AutoRecycle(TextureClient *aClient);
 
   void ReturnTextureClient(TextureClient *aClient);
   void ReturnTextureClientDeferred(TextureClient *aClient);
@@ -59,6 +74,8 @@ private:
 
   std::stack<RefPtr<TextureClient> > mTextureClients;
   std::stack<RefPtr<TextureClient> > mTextureClientsDeferred;
+  std::list<RefPtr<TextureClient> > mAutoRecycle;
+
   nsRefPtr<nsITimer> mTimer;
   RefPtr<ISurfaceAllocator> mSurfaceAllocator;
 };

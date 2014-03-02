@@ -11,6 +11,12 @@
 
 #include "nsComponentManagerUtils.h"
 
+#if 0
+#define RECYCLE_LOG(...) printf_stderr(__VA_ARGS__)
+#else
+#define RECYCLE_LOG(...) do { } while (0)
+#endif
+
 namespace mozilla {
 namespace layers {
 
@@ -40,6 +46,7 @@ TextureClientPool::GetTextureClient()
   if (mTextureClients.size()) {
     textureClient = mTextureClients.top();
     mTextureClients.pop();
+    RECYCLE_LOG("Skip allocate (%i left)\n", mTextureClients.size());
     return textureClient;
   }
 
@@ -49,13 +56,42 @@ TextureClientPool::GetTextureClient()
 
   // No unused clients in the pool, create one
   if (gfxPlatform::GetPlatform()->GetPrefLayersForceShmemTiles()) {
-    textureClient = TextureClient::CreateBufferTextureClient(mSurfaceAllocator, mFormat, TEXTURE_IMMEDIATE_UPLOAD);
+    textureClient = TextureClient::CreateBufferTextureClient(mSurfaceAllocator, mFormat, TEXTURE_IMMEDIATE_UPLOAD | TEXTURE_RECYCLE);
   } else {
-    textureClient = TextureClient::CreateTextureClientForDrawing(mSurfaceAllocator, mFormat, TEXTURE_IMMEDIATE_UPLOAD);
+    textureClient = TextureClient::CreateTextureClientForDrawing(mSurfaceAllocator, mFormat, TEXTURE_FLAGS_DEFAULT | TEXTURE_RECYCLE);
   }
   textureClient->AsTextureClientDrawTarget()->AllocateForSurface(mSize, ALLOC_DEFAULT);
+  RECYCLE_LOG("CAN-TILE: 1. Allocate %p\n", textureClient.get());
 
   return textureClient;
+}
+
+static void
+RecycleCallback(TextureClient* aClient, void* aClosure) {
+  TextureClientPool* pool =
+    reinterpret_cast<TextureClientPool*>(aClosure);
+
+  aClient->ClearRecycleCallback();
+  pool->ReturnTextureClient(aClient);
+}
+
+static void
+WaitForCompositorRecycleCallback(TextureClient* aClient, void* aClosure) {
+  TextureClientPool* pool =
+    reinterpret_cast<TextureClientPool*>(aClosure);
+
+  // This will grab a reference that will be released once the compositor
+  // acknowledges the remote recycle. Once it is received the object
+  // will be fully recycled.
+  aClient->WaitForCompositorRecycle();
+  aClient->SetRecycleCallback(RecycleCallback, aClosure);
+}
+
+void
+TextureClientPool::AutoRecycle(TextureClient *aClient)
+{
+  mAutoRecycle.push_back(aClient);
+  aClient->SetRecycleCallback(WaitForCompositorRecycleCallback, this);
 }
 
 void
@@ -77,6 +113,8 @@ TextureClientPool::ReturnTextureClient(TextureClient *aClient)
     mTimer->InitWithFuncCallback(ShrinkCallback, this, sShrinkTimeout,
                                  nsITimer::TYPE_ONE_SHOT);
   }
+
+  mAutoRecycle.remove(aClient);
 }
 
 void

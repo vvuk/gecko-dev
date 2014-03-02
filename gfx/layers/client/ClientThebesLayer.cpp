@@ -171,13 +171,14 @@ ClientLayerManager::CreateThebesLayerWithHint(ThebesLayerCreationHint aHint)
   if (useSimple == -1) {
     useSimple = Preferences::GetBool("layers.simple-tiles", false) ? 1 : 0;
   }
+  useSimple = true;
 
   NS_ASSERTION(InConstruction(), "Only allowed in construction phase");
   if (
 #ifdef MOZ_B2G
       aHint == SCROLLABLE &&
 #endif
-      gfxPlatform::GetPrefLayersEnableTiles() &&
+      true &&
       (AsShadowForwarder()->GetCompositorBackendType() == LayersBackend::LAYERS_OPENGL ||
        AsShadowForwarder()->GetCompositorBackendType() == LayersBackend::LAYERS_D3D9 ||
        AsShadowForwarder()->GetCompositorBackendType() == LayersBackend::LAYERS_D3D11)) {

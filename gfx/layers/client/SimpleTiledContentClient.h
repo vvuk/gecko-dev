@@ -106,8 +106,7 @@ public:
   void SetFrameResolution(const CSSToScreenScale& aResolution) { mFrameResolution = aResolution; }
 
   bool HasFormatChanged() const;
-
-protected:
+private:
   SimpleClientTiledThebesLayer* mThebesLayer;
   CompositableClient* mCompositableClient;
   ClientLayerManager* mManager;

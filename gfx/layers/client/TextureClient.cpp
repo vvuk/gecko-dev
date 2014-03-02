@@ -53,6 +53,12 @@
 #  include "gfxSharedImageSurface.h"
 #endif
 
+#if 0
+#define RECYCLE_LOG(...) printf_stderr(__VA_ARGS__)
+#else
+#define RECYCLE_LOG(...) do { } while (0)
+#endif
+
 using namespace mozilla::gl;
 using namespace mozilla::gfx;
 
@@ -80,6 +86,7 @@ public:
   , mTextureData(nullptr)
   , mTextureClient(nullptr)
   , mIPCOpen(false)
+  , mReadyToRecycle(false)
   {
     MOZ_COUNT_CTOR(TextureChild);
   }
@@ -90,6 +97,32 @@ public:
   }
 
   bool Recv__delete__() MOZ_OVERRIDE;
+
+  bool RecvCompositorRecycle()
+  {
+    if (!mWaitForRecycle) {
+      RECYCLE_LOG("***** Was not waiting on anything ******");
+    }
+    RECYCLE_LOG("CAN-TILE: 3. Comp done %p\n", mWaitForRecycle.get());
+    RECYCLE_LOG("Receive recycle %p\n", mTextureClient);
+    mWaitForRecycle = nullptr;
+    RECYCLE_LOG("End recycle %p\n", mTextureClient);
+    return true;
+  }
+
+  void WaitForCompositorRecycle()
+  {
+    if (mWaitForRecycle) {
+      RECYCLE_LOG("\n\n\n\n\nALREADY WAITING on %p\n\n\n\n", mWaitForRecycle.get());
+      abort();
+    }
+    mWaitForRecycle = mTextureClient;
+    RECYCLE_LOG("Wait for recycle %p\n", mWaitForRecycle.get());
+    RECYCLE_LOG("CAN-TILE: 2. Wait for recycle %p\n", mWaitForRecycle.get());
+    TimeStamp start = TimeStamp::Now();
+    SendClientRecycle();
+    RECYCLE_LOG("time to send message %f\n", (float)(TimeStamp::Now() - start).ToMilliseconds());
+  }
 
   /**
    * Only used during the deallocation phase iff we need synchronization between
@@ -128,10 +161,12 @@ private:
     Release();
   }
 
+  RefPtr<TextureClient> mWaitForRecycle;
   CompositableForwarder* mForwarder;
   TextureClientData* mTextureData;
   TextureClient* mTextureClient;
   bool mIPCOpen;
+  bool mReadyToRecycle;
 
   friend class TextureClient;
 };
@@ -139,6 +174,7 @@ private:
 void
 TextureChild::DeleteTextureData()
 {
+  mWaitForRecycle = nullptr;
   if (mTextureData) {
     mTextureData->DeallocateSharedData(GetAllocator());
     delete mTextureData;
@@ -159,6 +195,7 @@ TextureChild::ActorDestroy(ActorDestroyReason why)
   if (mTextureClient) {
     mTextureClient->mActor = nullptr;
   }
+  mWaitForRecycle = nullptr;
 }
 
 // static
@@ -176,6 +213,12 @@ TextureClient::DestroyIPDLActor(PTextureChild* actor)
 {
   static_cast<TextureChild*>(actor)->ReleaseIPDLReference();
   return true;
+}
+
+void
+TextureClient::WaitForCompositorRecycle()
+{
+  mActor->WaitForCompositorRecycle();
 }
 
 bool

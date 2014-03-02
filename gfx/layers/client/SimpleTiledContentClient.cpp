@@ -106,12 +106,14 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
   // if this is true, we're using a separate buffer to do our drawing first
   bool doBufferedDrawing = true;
 
-  RefPtr<TextureClient> textureClient = mCompositableClient->CreateTextureClientForDrawing(tileFormat, TEXTURE_FLAGS_DEFAULT);
+  //RefPtr<TextureClient> textureClient = mCompositableClient->CreateTextureClientForDrawing(tileFormat, TEXTURE_FLAGS_DEFAULT);
+  RefPtr<TextureClient> textureClient = mManager->GetTexturePool(tileFormat)->GetTextureClient();
+  mManager->GetTexturePool(tileFormat)->AutoRecycle(textureClient);
   // we are making an assumption here...
   BufferTextureClient *textureClientBuf = (BufferTextureClient*) textureClient->AsTextureClientDrawTarget();
-  bool ok = textureClientBuf->AllocateForSurface(kTileSize, ALLOC_DEFAULT);
+  //bool ok = textureClientBuf->AllocateForSurface(kTileSize, ALLOC_DEFAULT);
 
-  if (!ok) {
+  if (false) {
     NS_WARNING("TextureClient allocation failed");
     return SimpleTiledLayerTile();
   }

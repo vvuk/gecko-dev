@@ -55,6 +55,8 @@ const TextureFlags TEXTURE_ON_WHITE           = 1 << 13;
 const TextureFlags TEXTURE_ON_BLACK           = 1 << 14;
 // A texture host that supports tiling
 const TextureFlags TEXTURE_TILE               = 1 << 15;
+// A texture should be recycled when no longer in used
+const TextureFlags TEXTURE_RECYCLE            = 1 << 16;
 // Texture contents should be initialized
 // from the previous texture.
 const TextureFlags TEXTURE_COPY_PREVIOUS      = 1 << 24;
