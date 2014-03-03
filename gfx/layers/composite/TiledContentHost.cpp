@@ -62,8 +62,10 @@ TiledLayerBufferComposite::TiledLayerBufferComposite(ISurfaceAllocator* aAllocat
           sharedLock = gfxShmSharedReadLock::Open(aAllocator, ipcLock.get_Shmem());
         } else {
           sharedLock = reinterpret_cast<gfxMemorySharedReadLock*>(ipcLock.get_uintptr_t());
-          // The corresponding AddRef is in TiledClient::GetTileDescriptor
-          sharedLock->Release();
+          if (sharedLock) {
+            // The corresponding AddRef is in TiledClient::GetTileDescriptor
+            sharedLock->Release();
+          }
         }
 
         mRetainedTiles.AppendElement(TileHost(sharedLock, texture));
