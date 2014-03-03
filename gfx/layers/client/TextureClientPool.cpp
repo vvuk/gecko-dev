@@ -55,6 +55,7 @@ TextureClientPool::GetTextureClient()
   ShrinkToMaximumSize();
 
   // No unused clients in the pool, create one
+  RECYCLE_LOG("Have to allocate (0 left)\n");
   if (gfxPlatform::GetPlatform()->GetPrefLayersForceShmemTiles()) {
     textureClient = TextureClient::CreateBufferTextureClient(mSurfaceAllocator, mFormat, TEXTURE_IMMEDIATE_UPLOAD | TEXTURE_RECYCLE);
   } else {
@@ -106,6 +107,7 @@ TextureClientPool::ReturnTextureClient(TextureClient *aClient)
   // Add the client to the pool and shrink down if we're beyond our maximum size
   mTextureClients.push(aClient);
   ShrinkToMaximumSize();
+  RECYCLE_LOG("recycled and shrunk (%i left)\n", mTextureClients.size());
 
   // Kick off the pool shrinking timer if there are still more unused texture
   // clients than our desired minimum cache size.
@@ -114,6 +116,7 @@ TextureClientPool::ReturnTextureClient(TextureClient *aClient)
                                  nsITimer::TYPE_ONE_SHOT);
   }
 
+  RECYCLE_LOG("CAN-TILE: 4. Recycle %p\n", aClient);
   mAutoRecycle.remove(aClient);
 }
 
@@ -155,7 +158,8 @@ TextureClientPool::ShrinkToMaximumSize()
 void
 TextureClientPool::ShrinkToMinimumSize()
 {
-  while (mTextureClients.size() > sMinCacheSize) {
+  RECYCLE_LOG("TextureClientPool: ShrinkToMinimumSize, removing %d clients", mTextureClients.size() - sMinimumCacheSize);
+  while (mTextureClients.size() > sMinimumCacheSize) {
     mTextureClients.pop();
   }
 }
