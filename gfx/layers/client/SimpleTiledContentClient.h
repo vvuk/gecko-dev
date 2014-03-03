@@ -67,6 +67,7 @@ struct SimpleTiledLayerTile
   void Release()
   {
     mTileBuffer = nullptr;
+    mCachedBuffer = nullptr;
   }
 };
 
@@ -123,7 +124,7 @@ private:
 
   SimpleTiledLayerTile GetPlaceholderTile() const { return SimpleTiledLayerTile(); }
 
-  void ReleaseTile(SimpleTiledLayerTile aTile) { aTile.mTileBuffer = nullptr; }
+  void ReleaseTile(SimpleTiledLayerTile aTile) { aTile.Release(); }
 
   void SwapTiles(SimpleTiledLayerTile& aTileA, SimpleTiledLayerTile& aTileB) { std::swap(aTileA, aTileB); }
 };

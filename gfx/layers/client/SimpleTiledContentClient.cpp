@@ -26,6 +26,8 @@
 #include "nsMathUtils.h"               // for NS_roundf
 #include "gfx2DGlue.h"
 
+#define ALOG(...)  __android_log_print(ANDROID_LOG_INFO, "SimpleTiles", __VA_ARGS__)
+
 #define GFX_SIMP_TILEDLAYER_DEBUG_OVERLAY
 #ifdef GFX_SIMP_TILEDLAYER_DEBUG_OVERLAY
 #include "cairo.h"
@@ -79,6 +81,7 @@ SimpleTiledLayerBuffer::PaintThebes(const nsIntRegion& aNewValidRegion,
   NS_ASSERTION(!aPaintRegion.GetBounds().IsEmpty(), "Empty paint region\n");
 
   PROFILER_LABEL("SimpleTiledLayerBuffer", "PaintThebesUpdate");
+
   Update(aNewValidRegion, aPaintRegion);
 
 #ifdef GFX_TILEDLAYER_PREF_WARNINGS
@@ -105,6 +108,7 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
 
   // if this is true, we're using a separate buffer to do our drawing first
   bool doBufferedDrawing = true;
+  bool fullPaint = false;
 
   //RefPtr<TextureClient> textureClient = mCompositableClient->CreateTextureClientForDrawing(tileFormat, TEXTURE_FLAGS_DEFAULT);
   RefPtr<TextureClient> textureClient = mManager->GetTexturePool(tileFormat)->GetTextureClient();
@@ -142,6 +146,7 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
 
     if (!aTile.mCachedBuffer) {
       aTile.mCachedBuffer = SharedBuffer::Create(clientAsImageSurface->GetDataSize());
+      fullPaint = true;
     }
     bufferData = (unsigned char*) aTile.mCachedBuffer->Data();
 
@@ -149,28 +154,31 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
                                                                      kTileSize,
                                                                      bufferStride,
                                                                      tileFormat);
-    //drawTarget->ClearRect(Rect(0, 0, TILEDLAYERBUFFER_TILE_SIZE, TILEDLAYERBUFFER_TILE_SIZE));
 
-    drawBounds = aDirtyRegion.GetBounds();
-    drawBounds.ScaleRoundOut(mResolution);
-    drawRegion = nsIntRegion(drawBounds);
+    if (fullPaint) {
+      drawBounds = nsIntRect(aTileOrigin.x, aTileOrigin.y, GetScaledTileLength(), GetScaledTileLength());
+      drawRegion = nsIntRegion(drawBounds);
+
+#if 0
+      // we should never see red, because that indicates a partial tile
+      RefPtr<gfxContext> cx = new gfxContext(drawTarget);
+      cx->SetColor(gfxRGBA(1.0, 0.0, 0.0, 1.0));
+      cx->Paint();
+#endif
+    } else {
+      drawBounds = aDirtyRegion.GetBounds();
+      drawRegion = nsIntRegion(drawBounds);
+
+      if (GetContentType() == gfxContentType::COLOR_ALPHA)
+        drawTarget->ClearRect(Rect(drawBounds.x, drawBounds.y, drawBounds.width, drawBounds.height));
+    }
   } else {
     drawTarget = textureClient->AsTextureClientDrawTarget()->GetAsDrawTarget();
-    //drawTarget->ClearRect(Rect(0, 0, TILEDLAYERBUFFER_TILE_SIZE, TILEDLAYERBUFFER_TILE_SIZE));
 
+    fullPaint = true;
     drawBounds = nsIntRect(aTileOrigin.x, aTileOrigin.y, GetScaledTileLength(), GetScaledTileLength());
     drawRegion = nsIntRegion(drawBounds);
   }
-
-#if 0
-  __android_log_print(ANDROID_LOG_INFO, "SimpleTiles", "tile [%d %d %d %d] res: %f dirty region: ", aTileOrigin.x, aTileOrigin.y, GetScaledTileLength(), GetScaledTileLength(), mResolution);
-  {
-    nsIntRegionRectIterator it(aDirtyRegion);
-    for (const nsIntRect* rect = it.Next(); rect != nullptr; rect = it.Next()) {
-      __android_log_print(ANDROID_LOG_INFO, "SimpleTiles", " rect %i, %i, %i, %i\n", rect->x, rect->y, rect->width, rect->height);
-    }
-  }
-#endif
 
   // do the drawing
 
@@ -179,9 +187,12 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
   ctxt->Scale(mResolution, mResolution);
   ctxt->Translate(gfxPoint(-aTileOrigin.x, -aTileOrigin.y));
 
+  if (GetContentType() == gfxContentType::COLOR_ALPHA)
+    drawTarget->ClearRect(Rect(drawBounds.x, drawBounds.y, drawBounds.width, drawBounds.height));
+
   mCallback(mThebesLayer, ctxt,
             drawRegion,
-            DrawRegionClip::CLIP_NONE,
+            fullPaint ? DrawRegionClip::CLIP_NONE : DrawRegionClip::DRAW_SNAPPED, // XXX DRAW or DRAW_SNAPPED?
             invalidateRegion,
             mCallbackData);
 
@@ -417,24 +428,7 @@ SimpleClientTiledThebesLayer::RenderLayer()
 
   const FrameMetrics& parentMetrics = GetParent()->GetFrameMetrics();
 
-#if 0
-  // expand the visible region to integer multipliers of tile size in all directions
-  nsIntRect wantToPaintBounds = mVisibleRegion.GetBounds();
-
-  float tileSize = TILEDLAYERBUFFER_TILE_SIZE;
-  float newx = floorf(wantToPaintBounds.x / tileSize) * tileSize;
-  float newy = floorf(wantToPaintBounds.y / tileSize) * tileSize;
-  float neww = ceilf(((wantToPaintBounds.x - newx) + wantToPaintBounds.width) / tileSize) * tileSize;
-  float newh = ceilf(((wantToPaintBounds.y - newy) + wantToPaintBounds.height) / tileSize) * tileSize;
-
-  printf_stderr("expanded bounds [%d,%d,%d,%d] -> [%f,%f,%f,%f]\n",
-                wantToPaintBounds.x, wantToPaintBounds.y, wantToPaintBounds.width, wantToPaintBounds.height,
-                newx, newy, neww, newh);
-
-  nsIntRegion wantToPaintRegion = nsIntRect(newx, newy, neww, newh);
-#else
   nsIntRegion wantToPaintRegion = mVisibleRegion;
-#endif
 
   // Only paint the mask layer on the first transaction.
   if (GetMaskLayer() && !ClientManager()->IsRepeatTransaction()) {
