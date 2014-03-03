@@ -11,7 +11,7 @@
 
 #include "nsComponentManagerUtils.h"
 
-#if 0
+#if 1
 #define RECYCLE_LOG(...) printf_stderr(__VA_ARGS__)
 #else
 #define RECYCLE_LOG(...) do { } while (0)
@@ -30,7 +30,6 @@ TextureClientPool::TextureClientPool(gfx::SurfaceFormat aFormat, gfx::IntSize aS
                                      ISurfaceAllocator *aAllocator)
   : mFormat(aFormat)
   , mSize(aSize)
-  , mOutstandingClients(0)
   , mSurfaceAllocator(aAllocator)
 {
   mTimer = do_CreateInstance("@mozilla.org/timer;1");
@@ -39,8 +38,6 @@ TextureClientPool::TextureClientPool(gfx::SurfaceFormat aFormat, gfx::IntSize aS
 TemporaryRef<TextureClient>
 TextureClientPool::GetTextureClient()
 {
-  mOutstandingClients++;
-
   // Try to fetch a client from the pool
   RefPtr<TextureClient> textureClient;
   if (mTextureClients.size()) {
@@ -101,8 +98,6 @@ TextureClientPool::ReturnTextureClient(TextureClient *aClient)
   if (!aClient) {
     return;
   }
-  MOZ_ASSERT(mOutstandingClients);
-  mOutstandingClients--;
 
   // Add the client to the pool and shrink down if we're beyond our maximum size
   mTextureClients.push(aClient);
@@ -131,7 +126,7 @@ void
 TextureClientPool::ShrinkToMaximumSize()
 {
   uint32_t totalClientsOutstanding =
-    mTextureClients.size() + mTextureClientsDeferred.size() + mOutstandingClients;
+    mTextureClients.size() + mTextureClientsDeferred.size();
 
   // We're over our desired maximum size, immediately shrink down to the
   // maximum, or zero if we have too many outstanding texture clients.
@@ -139,7 +134,6 @@ TextureClientPool::ShrinkToMaximumSize()
   // until they get returned.
   while (totalClientsOutstanding > sMaxTextureClients) {
     if (mTextureClientsDeferred.size()) {
-      mOutstandingClients--;
       mTextureClientsDeferred.pop();
     } else {
       if (!mTextureClients.size()) {
@@ -158,10 +152,12 @@ TextureClientPool::ShrinkToMaximumSize()
 void
 TextureClientPool::ShrinkToMinimumSize()
 {
-  RECYCLE_LOG("TextureClientPool: ShrinkToMinimumSize, removing %d clients", mTextureClients.size() - sMinimumCacheSize);
-  while (mTextureClients.size() > sMinimumCacheSize) {
+  RECYCLE_LOG("TextureClientPool: ShrinkToMinimumSize, removing %d clients", mTextureClients.size() - sMinCacheSize);
+  while (mTextureClients.size() > sMinCacheSize) {
     mTextureClients.pop();
   }
+
+  mTimer->Cancel();
 }
 
 void
@@ -180,7 +176,6 @@ TextureClientPool::Clear()
     mTextureClients.pop();
   }
   while (!mTextureClientsDeferred.empty()) {
-    mOutstandingClients--;
     mTextureClientsDeferred.pop();
   }
 }

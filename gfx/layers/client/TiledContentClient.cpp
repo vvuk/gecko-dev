@@ -498,12 +498,6 @@ TileClient::GetBackBuffer(const nsIntRegion& aDirtyRegion, TextureClientPool *aP
 
   if (!mBackBuffer ||
       mBackLock->GetReadCount() > 1) {
-    if (mBackBuffer) {
-      // Our current back-buffer is still locked by the compositor. This can occur
-      // when the client is producing faster than the compositor can consume. In
-      // this case we just want to drop it and not return it to the pool.
-      aPool->ReportClientLost();
-    }
     mBackBuffer = aPool->GetTextureClient();
     // Create a lock for our newly created back-buffer.
     if (gfxPlatform::GetPlatform()->PreferMemoryOverShmem()) {

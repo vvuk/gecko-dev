@@ -47,9 +47,6 @@ public:
   void ShrinkToMaximumSize();
   void ShrinkToMinimumSize();
   void ReturnDeferredClients();
-  // This means a texture client that was taken from the pool will never be
-  // reused again.
-  void ReportClientLost() { mOutstandingClients--; }
 
   void Clear();
 
@@ -60,17 +57,14 @@ private:
 
   // The minimum size of the pool (the number of tiles that will be kept after
   // shrinking).
-  static const uint32_t sMinCacheSize = 0;
+  static const uint32_t sMinCacheSize = 16;
 
-  // This is the number of texture clients we don't want to exceed, including
-  // outstanding TextureClients (from GetTextureClient()), cached
-  // TextureClients and deferred-return TextureClients.
+  // This is the number of cached texture clients we don't want to exceed, including
+  // regular and deferred-return TextureClients.
   static const uint32_t sMaxTextureClients = 50;
 
   gfx::SurfaceFormat mFormat;
   gfx::IntSize mSize;
-
-  uint32_t mOutstandingClients;
 
   std::stack<RefPtr<TextureClient> > mTextureClients;
   std::stack<RefPtr<TextureClient> > mTextureClientsDeferred;
