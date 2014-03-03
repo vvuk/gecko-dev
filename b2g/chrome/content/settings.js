@@ -715,6 +715,10 @@ SettingsListener.observe('layers.enable-tiles', false, function(value) {
   Services.prefs.setBoolPref('layers.enable-tiles', value);
 });
 
+SettingsListener.observe('layers.simple-tiles', false, function(value) {
+  Services.prefs.setBoolPref('layers.simple-tiles', value);
+});
+
 SettingsListener.observe('layers.progressive-paint', false, function(value) {
   Services.prefs.setBoolPref('layers.progressive-paint', value);
 });
@@ -722,4 +726,21 @@ SettingsListener.observe('layers.progressive-paint', false, function(value) {
 SettingsListener.observe('layers.draw-tile-borders', false, function(value) {
   Services.prefs.setBoolPref('layers.draw-tile-borders', value);
 });
+
+SettingsListener.observe('b2g.restart-app-magic-pref', false, function(value) {
+  if (value == true) {
+    // set back to false, so that we don't hit a restart loop
+    var lock = window.navigator.mozSettings.createLock();
+    lock.set({'b2g.restart-app-magic-pref': false});
+
+    // schedule a quit 500ms from now, so that we have time to set this to false
+    // this is all horribly dodgy and flakey
+    let appStartup = Cc['@mozilla.org/toolkit/app-startup;1']
+                       .getService(Ci.nsIAppStartup);
+    setTimeout(function() {
+        appStartup.quit(Ci.nsIAppStartup.eForceQuit);
+    }, 500);
+  }
+});
+
 
