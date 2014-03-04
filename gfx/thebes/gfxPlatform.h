@@ -516,6 +516,7 @@ public:
     static bool GetPrefLayersForcePerTileDrawing();
     static bool GetPrefLayersForceShmemTiles();
     static bool GetPrefLayersDrawFPS();
+    static bool GetPrefLayersOverzealousGrallocUnlocking();
 
     static bool OffMainThreadCompositionRequired();
 

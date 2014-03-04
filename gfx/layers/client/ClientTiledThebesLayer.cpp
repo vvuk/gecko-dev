@@ -39,7 +39,9 @@ ClientTiledThebesLayer::~ClientTiledThebesLayer()
 void
 ClientTiledThebesLayer::ClearCachedResources()
 {
-  mContentClient->ClearCachedResources();
+  if (mContentClient) {
+    mContentClient->ClearCachedResources();
+  }
 }
 
 void

@@ -186,6 +186,13 @@ CompositorOGLGonkBackendSpecificData::EndFrame()
 {
   gl()->MakeCurrent();
 
+  // Some platforms have issues unlocking Gralloc buffers even when they're
+  // rebound.
+  if (gfxPlatform::GetPrefLayersOverzealousGrallocUnlocking()) {
+    mUnusedTextures.AppendElements(mCreatedTextures);
+    mCreatedTextures.Clear();
+  }
+
   // Delete unused textures
   for (size_t i = 0; i < mUnusedTextures.Length(); i++) {
     GLuint texture = mUnusedTextures[i];

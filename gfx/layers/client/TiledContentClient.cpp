@@ -414,19 +414,17 @@ TileClient::ValidateBackBufferFromFront(const nsIntRegion& aDirtyRegion,
                                         bool aCanRerasterizeValidRegion)
 {
   if (mBackBuffer && mFrontBuffer) {
-    // TODO: Respect aDirtyRegion fully by tracking the valid region
-    const gfx::IntSize& size = mFrontBuffer->GetSize();
+    const nsIntRect tileRect = nsIntRect(0, 0, TILEDLAYERBUFFER_TILE_SIZE, TILEDLAYERBUFFER_TILE_SIZE);
 
-    if (aDirtyRegion.Contains(nsIntRect(0, 0, size.width, size.height))) {
+    if (aDirtyRegion.Contains(tileRect)) {
       // The dirty region means that we no longer need the front buffer, so
       // discard it.
       DiscardFrontBuffer();
     } else {
       // Region that needs copying.
-
       nsIntRegion regionToCopy = mInvalidBack;
 
-      regionToCopy = regionToCopy.Sub(regionToCopy, aDirtyRegion);
+      regionToCopy.Sub(regionToCopy, aDirtyRegion);
 
       if (regionToCopy.IsEmpty() ||
           (aCanRerasterizeValidRegion &&
@@ -447,7 +445,13 @@ TileClient::ValidateBackBufferFromFront(const nsIntRegion& aDirtyRegion,
       }
       TextureClientAutoUnlock autoBack(mBackBuffer);
 
-      mFrontBuffer->CopyToTextureClient(mBackBuffer);
+      // Copy the bounding rect of regionToCopy. As tiles are quite small, it
+      // is unlikely that we'd save much by copying each individual rect of the
+      // region, but we can reevaluate this if it becomes an issue.
+      const nsIntRect rectToCopy = regionToCopy.GetBounds();
+      gfx::IntRect gfxRectToCopy(rectToCopy.x, rectToCopy.y, rectToCopy.width, rectToCopy.height);
+      gfx::IntPoint gfxRectToCopyTopLeft = gfxRectToCopy.TopLeft();
+      mFrontBuffer->CopyToTextureClient(mBackBuffer, &gfxRectToCopy, &gfxRectToCopyTopLeft);
 
       mInvalidBack.SetEmpty();
     }
@@ -725,6 +729,7 @@ ClientTiledLayerBuffer::ValidateTile(TileClient aTile,
 
   if (usingSinglePaintBuffer) {
     // XXX Perhaps we should just copy the bounding rectangle here?
+    RefPtr<gfx::SourceSurface> source = mSinglePaintDrawTarget->Snapshot();
     nsIntRegionRectIterator it(aDirtyRegion);
     for (const nsIntRect* dirtyRect = it.Next(); dirtyRect != nullptr; dirtyRect = it.Next()) {
 #ifdef GFX_TILEDLAYER_PREF_WARNINGS
@@ -737,15 +742,20 @@ ClientTiledLayerBuffer::ValidateTile(TileClient aTile,
                          dirtyRect->height);
       drawRect.Scale(mResolution);
 
-      RefPtr<gfx::SourceSurface> source = mSinglePaintDrawTarget->Snapshot();
-      drawTarget->CopySurface(
-        source,
-        gfx::IntRect(NS_roundf((dirtyRect->x - mSinglePaintBufferOffset.x) * mResolution),
-                     NS_roundf((dirtyRect->y - mSinglePaintBufferOffset.y) * mResolution),
-                     drawRect.width,
-                     drawRect.height),
-        gfx::IntPoint(NS_roundf(drawRect.x), NS_roundf(drawRect.y)));
+      gfx::IntRect copyRect(NS_roundf((dirtyRect->x - mSinglePaintBufferOffset.x) * mResolution),
+                            NS_roundf((dirtyRect->y - mSinglePaintBufferOffset.y) * mResolution),
+                            drawRect.width,
+                            drawRect.height);
+      gfx::IntPoint copyTarget(NS_roundf(drawRect.x), NS_roundf(drawRect.y));
+      drawTarget->CopySurface(source, copyRect, copyTarget);
+
+      // Mark the newly updated area as invalid in the front buffer
+      aTile.mInvalidFront.Or(aTile.mInvalidFront, nsIntRect(copyTarget.x, copyTarget.y, copyRect.width, copyRect.height));
     }
+
+    // The new buffer is now validated, remove the dirty region from it.
+    aTile.mInvalidBack.Sub(nsIntRect(0, 0, TILEDLAYERBUFFER_TILE_SIZE, TILEDLAYERBUFFER_TILE_SIZE),
+                           offsetDirtyRegion);
   } else {
     // Area of the full tile...
     nsIntRegion tileRegion = nsIntRect(aTileOrigin.x, aTileOrigin.y, TILEDLAYERBUFFER_TILE_SIZE, TILEDLAYERBUFFER_TILE_SIZE);
@@ -754,25 +764,25 @@ ClientTiledLayerBuffer::ValidateTile(TileClient aTile,
     tileRegion = tileRegion.Intersect(aDirtyRegion);
 
     // Move invalid areas into layer space.
-    aTile.mInvalidFront.MoveBy(aTileOrigin.x, aTileOrigin.y);
-    aTile.mInvalidBack.MoveBy(aTileOrigin.x, aTileOrigin.y);
+    aTile.mInvalidFront.MoveBy(aTileOrigin);
+    aTile.mInvalidBack.MoveBy(aTileOrigin);
 
     // Add the area that's going to be redrawn to the invalid area of the
     // front region.
-    aTile.mInvalidFront = aTile.mInvalidFront.Or(aTile.mInvalidFront, tileRegion);
+    aTile.mInvalidFront.Or(aTile.mInvalidFront, tileRegion);
 
     // Add invalid areas of the backbuffer to the area to redraw.
-    tileRegion = tileRegion.Or(tileRegion, aTile.mInvalidBack);
+    tileRegion.Or(tileRegion, aTile.mInvalidBack);
 
     // Move invalid areas back into tile space.
-    aTile.mInvalidFront.MoveBy(-aTileOrigin.x, -aTileOrigin.y);
+    aTile.mInvalidFront.MoveBy(-aTileOrigin);
 
     // This will be validated now.
     aTile.mInvalidBack.SetEmpty();
 
     nsIntRect bounds = tileRegion.GetBounds();
     bounds.ScaleRoundOut(mResolution, mResolution);
-    bounds.MoveBy(-aTileOrigin.x, -aTileOrigin.y);
+    bounds.MoveBy(-aTileOrigin);
 
     if (GetContentType() != gfxContentType::COLOR) {
       drawTarget->ClearRect(Rect(bounds.x, bounds.y, bounds.width, bounds.height));

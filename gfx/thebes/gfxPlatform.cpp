@@ -2071,6 +2071,7 @@ static bool sPrefLayersAccelerationDisabled = false;
 static bool sPrefLayersPreferOpenGL = false;
 static bool sPrefLayersPreferD3D9 = false;
 static bool sPrefLayersDrawFPS = false;
+static bool sPrefLayersOverzealousGrallocUnlocking = false;
 static bool sPrefLayersDump = false;
 static bool sPrefLayersScrollGraph = false;
 static bool sPrefLayersEnableTiles = false;
@@ -2104,6 +2105,7 @@ InitLayersAccelerationPrefs()
     sPrefLayersPreferOpenGL = Preferences::GetBool("layers.prefer-opengl", false);
     sPrefLayersPreferD3D9 = Preferences::GetBool("layers.prefer-d3d9", false);
     sPrefLayersDrawFPS = Preferences::GetBool("layers.acceleration.draw-fps", false);
+    sPrefLayersOverzealousGrallocUnlocking = Preferences::GetBool("layers.overzealous-gralloc-unlocking", false);
     sPrefLayersDump = Preferences::GetBool("layers.dump", false);
     sPrefLayersScrollGraph = Preferences::GetBool("layers.scroll-graph", false);
     sPrefLayersEnableTiles = Preferences::GetBool("layers.enable-tiles", false);
@@ -2196,6 +2198,13 @@ gfxPlatform::GetPrefLayersDrawFPS()
 {
   InitLayersAccelerationPrefs();
   return sPrefLayersDrawFPS;
+}
+
+bool
+gfxPlatform::GetPrefLayersOverzealousGrallocUnlocking()
+{
+  InitLayersAccelerationPrefs();
+  return sPrefLayersOverzealousGrallocUnlocking;
 }
 
 bool
