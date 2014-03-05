@@ -22,6 +22,7 @@
 #include "nsAutoPtr.h"                  // for nsRefPtr
 #include "nsPrintfCString.h"            // for nsPrintfCString
 #include "mozilla/layers/PTextureParent.h"
+#include "mozilla/unused.h"
 #include <limits>
 
 #if 0
@@ -737,7 +738,7 @@ void
 TextureParent::CompositorRecycle()
 {
   mTextureHost->ClearRecycleCallback();
-  SendCompositorRecycle();
+  mozilla::unused << SendCompositorRecycle();
 
   // Don't forget to prepare for the next reycle
   mWaitForClientRecycle = mTextureHost;

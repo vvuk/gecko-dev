@@ -13,6 +13,7 @@
 #include "gfxContext.h"                 // for gfxContext, etc
 #include "gfxPlatform.h"                // for gfxPlatform
 #include "gfxRect.h"                    // for gfxRect
+#include "mozilla/Attributes.h"         // for MOZ_THIS_IN_INITIALIZER_LIST
 #include "mozilla/MathAlgorithms.h"     // for Abs
 #include "mozilla/gfx/Point.h"          // for IntSize
 #include "mozilla/gfx/Rect.h"           // for Rect
@@ -28,7 +29,7 @@
 
 #define ALOG(...)  __android_log_print(ANDROID_LOG_INFO, "SimpleTiles", __VA_ARGS__)
 
-#define GFX_SIMP_TILEDLAYER_DEBUG_OVERLAY
+//#define GFX_SIMP_TILEDLAYER_DEBUG_OVERLAY
 #ifdef GFX_SIMP_TILEDLAYER_DEBUG_OVERLAY
 #include "cairo.h"
 #include <sstream>
@@ -37,7 +38,7 @@ static void DrawDebugOverlay(mozilla::gfx::DrawTarget* dt,
                              const TimeStamp& ts,
                              int x, int y, int width, int height)
 {
-  static int doDebugOverlay = 1;
+  static int doDebugOverlay = -1;
   static TimeStamp refStamp;
   if (doDebugOverlay == -1) {
     doDebugOverlay = PR_GetEnv("GFX_TILED_OVERLAY") != nullptr ? 1 : 0;
@@ -256,7 +257,7 @@ SimpleTiledLayerBuffer::GetContentType() const
 SimpleTiledContentClient::SimpleTiledContentClient(SimpleClientTiledThebesLayer* aThebesLayer,
                                                    ClientLayerManager* aManager)
   : CompositableClient(aManager->AsShadowForwarder())
-  , mTiledBuffer(aThebesLayer, this, aManager)
+  , mTiledBuffer(aThebesLayer, MOZ_THIS_IN_INITIALIZER_LIST(), aManager)
 {
   MOZ_COUNT_CTOR(SimpleTiledContentClient);
 }

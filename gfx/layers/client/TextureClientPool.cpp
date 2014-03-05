@@ -75,9 +75,6 @@ RecycleCallback(TextureClient* aClient, void* aClosure) {
 
 static void
 WaitForCompositorRecycleCallback(TextureClient* aClient, void* aClosure) {
-  TextureClientPool* pool =
-    reinterpret_cast<TextureClientPool*>(aClosure);
-
   // This will grab a reference that will be released once the compositor
   // acknowledges the remote recycle. Once it is received the object
   // will be fully recycled.

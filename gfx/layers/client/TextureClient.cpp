@@ -86,7 +86,6 @@ public:
   , mTextureData(nullptr)
   , mTextureClient(nullptr)
   , mIPCOpen(false)
-  , mReadyToRecycle(false)
   {
     MOZ_COUNT_CTOR(TextureChild);
   }
@@ -119,9 +118,11 @@ public:
     mWaitForRecycle = mTextureClient;
     RECYCLE_LOG("Wait for recycle %p\n", mWaitForRecycle.get());
     RECYCLE_LOG("CAN-TILE: 2. Wait for recycle %p\n", mWaitForRecycle.get());
-    TimeStamp start = TimeStamp::Now();
-    SendClientRecycle();
-    RECYCLE_LOG("time to send message %f\n", (float)(TimeStamp::Now() - start).ToMilliseconds());
+
+    bool rv = SendClientRecycle();
+    if (!rv) {
+      RECYCLE_LOG("CAN-TILE: Recycle failed %p\n", mWaitForRecycle.get());
+    }
   }
 
   /**
@@ -166,7 +167,6 @@ private:
   TextureClientData* mTextureData;
   TextureClient* mTextureClient;
   bool mIPCOpen;
-  bool mReadyToRecycle;
 
   friend class TextureClient;
 };
