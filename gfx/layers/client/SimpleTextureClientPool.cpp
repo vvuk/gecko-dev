@@ -11,7 +11,7 @@
 
 #include "nsComponentManagerUtils.h"
 
-#if 1
+#if 0
 #define RECYCLE_LOG(...) printf_stderr(__VA_ARGS__)
 #else
 #define RECYCLE_LOG(...) do { } while (0)
