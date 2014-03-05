@@ -115,10 +115,7 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
   //RefPtr<TextureClient> textureClient = mManager->GetTexturePool(tileFormat)->GetTextureClient();
   //mManager->GetTexturePool(tileFormat)->AutoRecycle(textureClient);
 
-  // we are making an assumption here...
-  BufferTextureClient *textureClientBuf = (BufferTextureClient*) textureClient->AsTextureClientDrawTarget();
-
-  if (false) {
+  if (!textureClient) {
     NS_WARNING("TextureClient allocation failed");
     return SimpleTiledLayerTile();
   }
@@ -126,6 +123,11 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
   if (!textureClient->Lock(OPEN_WRITE)) {
     NS_WARNING("TextureClient lock failed");
     return SimpleTiledLayerTile();
+  }
+
+  TextureClientSurface *textureClientSurf = textureClient->AsTextureClientSurface();
+  if (!textureClientSurf) {
+    doBufferedDrawing = false;
   }
 
   RefPtr<DrawTarget> drawTarget;
@@ -139,39 +141,49 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
   nsIntRegion invalidateRegion;
 
   if (doBufferedDrawing) {
-    nsRefPtr<gfxASurface> asurf = textureClientBuf->GetAsSurface();
-    clientAsImageSurface = asurf->GetAsImageSurface();
-    int32_t bufferStride = clientAsImageSurface->Stride();
+    // try to obtain the TextureClient as an ImageSurface, so that we can
+    // access the pixels directly
+    nsRefPtr<gfxASurface> asurf = textureClientSurf->GetAsSurface();
+    clientAsImageSurface = asurf ? asurf->GetAsImageSurface() : nullptr;
+    if (clientAsImageSurface) {
+      int32_t bufferStride = clientAsImageSurface->Stride();
 
-    if (!aTile.mCachedBuffer) {
-      aTile.mCachedBuffer = SharedBuffer::Create(clientAsImageSurface->GetDataSize());
-      fullPaint = true;
-    }
-    bufferData = (unsigned char*) aTile.mCachedBuffer->Data();
+      if (!aTile.mCachedBuffer) {
+        aTile.mCachedBuffer = SharedBuffer::Create(clientAsImageSurface->GetDataSize());
+        fullPaint = true;
+      }
+      bufferData = (unsigned char*) aTile.mCachedBuffer->Data();
 
-    drawTarget = gfxPlatform::GetPlatform()->CreateDrawTargetForData(bufferData,
-                                                                     kTileSize,
-                                                                     bufferStride,
-                                                                     tileFormat);
+      drawTarget = gfxPlatform::GetPlatform()->CreateDrawTargetForData(bufferData,
+                                                                       kTileSize,
+                                                                       bufferStride,
+                                                                       tileFormat);
 
-    if (fullPaint) {
-      drawBounds = nsIntRect(aTileOrigin.x, aTileOrigin.y, GetScaledTileLength(), GetScaledTileLength());
-      drawRegion = nsIntRegion(drawBounds);
+      if (fullPaint) {
+        drawBounds = nsIntRect(aTileOrigin.x, aTileOrigin.y, GetScaledTileLength(), GetScaledTileLength());
+        drawRegion = nsIntRegion(drawBounds);
 
 #if 0
-      // we should never see red, because that indicates a partial tile
-      RefPtr<gfxContext> cx = new gfxContext(drawTarget);
-      cx->SetColor(gfxRGBA(1.0, 0.0, 0.0, 1.0));
-      cx->Paint();
+        // we should never see red, because that indicates a partial tile
+        RefPtr<gfxContext> cx = new gfxContext(drawTarget);
+        cx->SetColor(gfxRGBA(1.0, 0.0, 0.0, 1.0));
+        cx->Paint();
 #endif
-    } else {
-      drawBounds = aDirtyRegion.GetBounds();
-      drawRegion = nsIntRegion(drawBounds);
+      } else {
+        drawBounds = aDirtyRegion.GetBounds();
+        drawRegion = nsIntRegion(drawBounds);
 
-      if (GetContentType() == gfxContentType::COLOR_ALPHA)
-        drawTarget->ClearRect(Rect(drawBounds.x, drawBounds.y, drawBounds.width, drawBounds.height));
+        if (GetContentType() == gfxContentType::COLOR_ALPHA)
+          drawTarget->ClearRect(Rect(drawBounds.x, drawBounds.y, drawBounds.width, drawBounds.height));
+      }
+    } else {
+      // failed to obtain the client as an ImageSurface
+      doBufferedDrawing = false;
     }
-  } else {
+  }
+
+  // this might get set above if we couldn't extract out a buffer
+  if (!doBufferedDrawing) {
     drawTarget = textureClient->AsTextureClientDrawTarget()->GetAsDrawTarget();
 
     fullPaint = true;
