@@ -6,7 +6,10 @@
 #ifndef MOZILLA_GFX_SIMPLETILEDCONTENTCLIENT_H
 #define MOZILLA_GFX_SIMPLETILEDCONTENTCLIENT_H
 
+// We include this header here so that we don't need to
+// duplicate BasicTiledLayerPaintData
 #include "TiledContentClient.h"
+
 #include "SharedBuffer.h"
 
 namespace mozilla {

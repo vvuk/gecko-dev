@@ -18,7 +18,7 @@
 #include "mozilla/gfx/Rect.h"           // for Rect
 #include "mozilla/layers/CompositableForwarder.h"
 #include "mozilla/layers/ShadowLayers.h"  // for ShadowLayerForwarder
-#include "TextureClientPool.h"
+#include "SimpleTextureClientPool.h"
 #include "nsDebug.h"                    // for NS_ASSERTION
 #include "nsISupportsImpl.h"            // for gfxContext::AddRef, etc
 #include "nsSize.h"                     // for nsIntSize
@@ -110,20 +110,18 @@ SimpleTiledLayerBuffer::ValidateTile(SimpleTiledLayerTile aTile,
   bool doBufferedDrawing = true;
   bool fullPaint = false;
 
-  //RefPtr<TextureClient> textureClient = mCompositableClient->CreateTextureClientForDrawing(tileFormat, TEXTURE_FLAGS_DEFAULT);
-  RefPtr<TextureClient> textureClient = mManager->GetTexturePool(tileFormat)->GetTextureClient();
-  mManager->GetTexturePool(tileFormat)->AutoRecycle(textureClient);
+  RefPtr<TextureClient> textureClient = mManager->GetSimpleTileTexturePool(tileFormat)->GetTextureClientWithAutoRecycle();
+  //RefPtr<TextureClient> textureClient = mManager->GetTexturePool(tileFormat)->GetTextureClient();
+  //mManager->GetTexturePool(tileFormat)->AutoRecycle(textureClient);
+
   // we are making an assumption here...
   BufferTextureClient *textureClientBuf = (BufferTextureClient*) textureClient->AsTextureClientDrawTarget();
-  //bool ok = textureClientBuf->AllocateForSurface(kTileSize, ALLOC_DEFAULT);
 
   if (false) {
     NS_WARNING("TextureClient allocation failed");
     return SimpleTiledLayerTile();
   }
 
-  // XXX do we need to clear?
-  // XXX do we need to OPEN_READ_WRITE?
   if (!textureClient->Lock(OPEN_WRITE)) {
     NS_WARNING("TextureClient lock failed");
     return SimpleTiledLayerTile();

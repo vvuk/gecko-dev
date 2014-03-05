@@ -16,6 +16,7 @@
 #include "mozilla/layers/CompositableClient.h"  // for CompositableChild, etc
 #include "mozilla/layers/ContentClient.h"  // for ContentClientRemote
 #include "mozilla/layers/TextureClientPool.h" // for TextureClientPool
+#include "mozilla/layers/SimpleTextureClientPool.h" // for SimpleTextureClientPool
 #include "mozilla/layers/ISurfaceAllocator.h"
 #include "mozilla/layers/LayersMessages.h"  // for EditReply, etc
 #include "mozilla/layers/LayersSurfaces.h"  // for SurfaceDescriptor
@@ -458,6 +459,21 @@ ClientLayerManager::GetTexturePool(SurfaceFormat aFormat)
   mTexturePools.insertBack(texturePoolMember);
 
   return texturePoolMember->mTexturePool;
+}
+
+SimpleTextureClientPool*
+ClientLayerManager::GetSimpleTileTexturePool(SurfaceFormat aFormat)
+{
+  int index = (int) aFormat;
+  mSimpleTilePools.EnsureLengthAtLeast(index+1);
+
+  if (mSimpleTilePools[index].get() == nullptr) {
+    mSimpleTilePools[index] = new SimpleTextureClientPool(aFormat, IntSize(TILEDLAYERBUFFER_TILE_SIZE,
+                                                                           TILEDLAYERBUFFER_TILE_SIZE),
+                                                          mForwarder);
+  }
+
+  return mSimpleTilePools[index];
 }
 
 void

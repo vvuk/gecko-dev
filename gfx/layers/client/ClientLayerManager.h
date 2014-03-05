@@ -35,6 +35,7 @@ class CompositorChild;
 class ImageLayer;
 class PLayerChild;
 class TextureClientPool;
+class SimpleTextureClientPool;
 
 class TextureClientPoolMember
   : public LinkedListElement<TextureClientPoolMember> {
@@ -109,6 +110,7 @@ public:
   virtual void SetIsFirstPaint() MOZ_OVERRIDE;
 
   TextureClientPool *GetTexturePool(gfx::SurfaceFormat aFormat);
+  SimpleTextureClientPool *GetSimpleTileTexturePool(gfx::SurfaceFormat aFormat);
 
   // Drop cached resources and ask our shadow manager to do the same,
   // if we have one.
@@ -229,6 +231,9 @@ private:
 
   RefPtr<ShadowLayerForwarder> mForwarder;
   LinkedList<TextureClientPoolMember> mTexturePools;
+
+  // indexed by gfx::SurfaceFormat
+  nsTArray<RefPtr<SimpleTextureClientPool> > mSimpleTilePools;
 };
 
 class ClientLayer : public ShadowableLayer
