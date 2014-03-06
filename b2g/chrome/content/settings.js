@@ -666,6 +666,7 @@ let settingsToObserve = {
     defaultValue: false
   },
   'layers.enable-tiles': false,
+  'layers.simple-tiles': false,
   'layers.progressive-paint': false,
   'layers.draw-tile-borders': false,
   'layers.dump': false,
@@ -718,4 +719,28 @@ for (let key in settingsToObserve) {
       break;
   }
 };
+
+SettingsListener.observe('b2g.restart-app-magic-pref', false, function(value) {
+  if (value == true) {
+    // set back to false, so that we don't hit a restart loop
+    var lock = window.navigator.mozSettings.createLock();
+    lock.set({'b2g.restart-app-magic-pref': false});
+
+    var tnow = performance.now();
+    if (tnow < 10000) {
+      // If it's been less than 10s since the app has started, ignore this pref set.
+      // It's likely that a stale 'true' value got left in the settings db,
+      // and this would lead to a reboot cycle.
+      return;
+    }
+
+    // schedule a quit 500ms from now, so that we have time to set this to false
+    // this is all horribly dodgy and flakey
+    let appStartup = Cc['@mozilla.org/toolkit/app-startup;1']
+                       .getService(Ci.nsIAppStartup);
+    setTimeout(function() {
+        appStartup.quit(Ci.nsIAppStartup.eForceQuit);
+    }, 500);
+  }
+});
 
