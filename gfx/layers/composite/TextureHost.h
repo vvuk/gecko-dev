@@ -275,7 +275,6 @@ class TextureHost
   void Finalize();
 
   friend class AtomicRefCountedWithFinalize<TextureHost>;
-
 public:
   TextureHost(TextureFlags aFlags);
 
@@ -427,6 +426,11 @@ public:
 
   virtual const char *Name() { return "TextureHost"; }
   virtual void PrintInfo(nsACString& aTo, const char* aPrefix);
+
+  /**
+   * Cast to a TextureHost for each backend.
+   */
+  virtual TextureHostOGL* AsHostOGL() { return nullptr; }
 
   /**
    * Indicates whether the TextureHost implementation is backed by an
