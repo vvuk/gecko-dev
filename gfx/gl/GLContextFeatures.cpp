@@ -432,9 +432,10 @@ ProfileVersionForFeature(GLFeature feature, ContextProfile profile)
     return featureInfo.mOpenGLVersion;
 }
 
-static inline bool
-IsFeatureIsPartOfProfileVersion(GLFeature feature,
-                                ContextProfile profile, unsigned int version)
+/* Used in GLContext.cpp */
+bool
+IsFeaturePartOfProfileVersion(GLFeature feature,
+                              ContextProfile profile, unsigned int version)
 {
     unsigned int profileVersion = ProfileVersionForFeature(feature, profile);
 
@@ -476,7 +477,7 @@ GLContext::InitFeatures()
     {
         GLFeature feature = GLFeature(feature_index);
 
-        if (IsFeatureIsPartOfProfileVersion(feature, mProfile, mVersion)) {
+        if (IsFeaturePartOfProfileVersion(feature, mProfile, mVersion)) {
             mAvailableFeatures[feature_index] = true;
             continue;
         }
