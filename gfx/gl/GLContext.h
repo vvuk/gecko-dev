@@ -329,6 +329,7 @@ public:
      * in GLContext.cpp.
      */
     enum GLExtensions {
+        Extension_None = 0,
         EXT_framebuffer_object,
         ARB_framebuffer_object,
         ARB_texture_rectangle,
@@ -491,6 +492,11 @@ private:
      * Mark the feature and associated extensions as unsupported
      */
     void MarkUnsupported(GLFeature feature);
+
+    /**
+     * Is this feature supported using the core (unsuffixed) symbols?
+     */
+    bool IsFeatureProvidedByCoreSymbols(GLFeature feature);
 
 // -----------------------------------------------------------------------------
 // Robustness handling
