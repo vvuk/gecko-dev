@@ -135,6 +135,13 @@
 @BINPATH@/@DLL_PREFIX@mozgtk@DLL_SUFFIX@
 @BINPATH@/@DLL_PREFIX@mozgtk2@DLL_SUFFIX@
 #endif
+#if defined(XP_WIN)
+#ifdef HAVE_64BIT_BUILD
+@BINPATH@/libovr64.dll
+#endif
+#elif defined(XP_MACOSX)
+@APPNAME@/Contents/MacOS/@DLL_PREFIX@ovr@DLL_SUFFIX@
+#endif
 
 [browser]
 ; [Base Browser Files]

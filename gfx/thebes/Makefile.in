@@ -8,3 +8,20 @@ DEFINES := $(filter-out -DUNICODE,$(DEFINES))
 
 DeprecatedPremultiplyTables.h: $(srcdir)/genTables.py
 	$(PYTHON) $(srcdir)/genTables.py
+
+LIBOVR_NAME =
+
+ifeq ($(MOZ_WIDGET_TOOLKIT),windows)
+ifdef HAVE_64BIT_BUILD
+LIBOVR_NAME = libovr64.dll
+endif
+endif
+
+ifeq ($(MOZ_WIDGET_TOOLKIT),cocoa)
+LIBOVR_NAME = libovr.dylib
+endif
+
+ifneq ($(LIBOVR_NAME),)
+libs:: $(srcdir)/$(LIBOVR_NAME)
+	$(INSTALL) $(IFLAGS1) $^ $(FINAL_TARGET)
+endif
