@@ -439,7 +439,7 @@ pref("layout.async-containerless-scrolling.enabled", true);
 // Whether to enable event region building during painting
 pref("layout.event-regions.enabled", false);
 
-// APZ preferences. For documentation/details on what these prefs do, check 
+// APZ preferences. For documentation/details on what these prefs do, check
 // gfx/layers/apz/src/AsyncPanZoomController.cpp.
 pref("apz.allow_checkerboarding", true);
 pref("apz.asyncscroll.throttle", 100);
@@ -4163,6 +4163,12 @@ pref("dom.browserElement.maxScreenshotDelayMS", 2000);
 
 // Whether we should show the placeholder when the element is focused but empty.
 pref("dom.placeholder.show_on_focus", true);
+
+#ifdef RELEASE_BUILD
+pref("dom.vr.enabled", false);
+#else
+pref("dom.vr.enabled", true);
+#endif
 
 // MMS UA Profile settings
 pref("wap.UAProf.url", "");

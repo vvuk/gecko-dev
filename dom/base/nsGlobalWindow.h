@@ -105,6 +105,7 @@ class Console;
 class External;
 class Function;
 class Gamepad;
+class VRDevice;
 class MediaQueryList;
 class MozSelfSupport;
 class Navigator;
@@ -733,6 +734,8 @@ public:
   void EnableGamepadUpdates();
   void DisableGamepadUpdates();
 
+  // Get the VR devices for this window, initializing if necessary
+  bool GetVRDevices(nsTArray<nsRefPtr<mozilla::dom::VRDevice>>& aDevices);
 
 #define EVENT(name_, id_, type_, struct_)                                     \
   mozilla::dom::EventHandlerNonNull* GetOn##name_()                           \
@@ -1626,6 +1629,13 @@ protected:
   // mSpeechSynthesis is only used on inner windows.
   nsRefPtr<mozilla::dom::SpeechSynthesis> mSpeechSynthesis;
 #endif
+
+  // Did VR get initialized for this window?
+  bool                                       mVRDevicesInitialized;
+  // The VRDevies for this window
+  nsTArray<nsRefPtr<mozilla::dom::VRDevice>> mVRDevices;
+  // Any attached HMD when fullscreen
+  nsRefPtr<mozilla::gfx::VRHMDInfo>          mVRHMDInfo;
 
   friend class nsDOMScriptableHelper;
   friend class nsDOMWindowUtils;

@@ -48,6 +48,7 @@ EXPORTS += [
     'gfxTypes.h',
     'gfxUserFontSet.h',
     'gfxUtils.h',
+    'gfxVR.h',
     'GraphicsFilter.h',
     'nsSurfaceTexture.h',
     'RoundedRect.h',
@@ -242,6 +243,7 @@ UNIFIED_SOURCES += [
     'gfxTextRun.cpp',
     'gfxUserFontSet.cpp',
     'gfxUtils.cpp',
+    'gfxVR.cpp',
     'nsSurfaceTexture.cpp',
     'nsUnicodeRange.cpp',
 ]
