@@ -985,7 +985,8 @@ void
 ContainerLayer::FillSpecificAttributes(SpecificLayerAttributes& aAttrs)
 {
   aAttrs = ContainerLayerAttributes(mPreXScale, mPreYScale,
-                                    mInheritedXScale, mInheritedYScale);
+                                    mInheritedXScale, mInheritedYScale,
+                                    reinterpret_cast<uint64_t>(mHMDInfo.get()));
 }
 
 bool
@@ -1032,9 +1033,11 @@ ContainerLayer::SortChildrenBy3DZOrder(nsTArray<Layer*>& aArray)
 void
 ContainerLayer::DefaultComputeEffectiveTransforms(const Matrix4x4& aTransformToSurface)
 {
+  bool keep3D = !!(GetContentFlags() & CONTENT_PRESERVE_3D);
   Matrix residual;
   Matrix4x4 idealTransform = GetLocalTransform() * aTransformToSurface;
-  idealTransform.ProjectTo2D();
+  if (!keep3D)
+    idealTransform.ProjectTo2D();
   mEffectiveTransform = SnapTransformTranslation(idealTransform, &residual);
 
   bool useIntermediateSurface;
@@ -1045,6 +1048,8 @@ ContainerLayer::DefaultComputeEffectiveTransforms(const Matrix4x4& aTransformToS
   } else if (gfxUtils::sDumpPainting) {
     useIntermediateSurface = true;
 #endif
+  } else if (keep3D && !mEffectiveTransform.Is2D()) {
+    useIntermediateSurface = true;
   } else {
     float opacity = GetEffectiveOpacity();
     CompositionOp blendMode = GetEffectiveMixBlendMode();
@@ -1059,6 +1064,9 @@ ContainerLayer::DefaultComputeEffectiveTransforms(const Matrix4x4& aTransformToS
 #else
         gfx::ThebesMatrix(contTransform).HasNonIntegerTranslation()) {
 #endif
+        if (keep3D)
+          useIntermediateSurface = true;
+
         for (Layer* child = GetFirstChild(); child; child = child->GetNextSibling()) {
           const nsIntRect *clipRect = child->GetEffectiveClipRect();
           /* We can't (easily) forward our transform to children with a non-empty clip
@@ -1651,6 +1659,9 @@ ContainerLayer::PrintInfo(std::stringstream& aStream, const char* aPrefix)
   }
   if (1.0 != mPreXScale || 1.0 != mPreYScale) {
     aStream << nsPrintfCString(" [preScale=%g, %g]", mPreXScale, mPreYScale).get();
+  }
+  if (mHMDInfo) {
+    aStream << nsPrintfCString(" [hmd=%p]", mHMDInfo.get()).get();
   }
 }
 

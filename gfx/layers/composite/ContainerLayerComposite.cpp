@@ -170,6 +170,109 @@ struct PreparedLayer
   nsIntRegion mSavedVisibleRegion;
 };
 
+
+template<class ContainerT> void
+ContainerRenderVR(ContainerT* aContainer,
+                  LayerManagerComposite* aManager,
+                  const nsIntRect& aClipRect,
+                  gfx::VRHMDInfo* aHMD)
+{
+  RefPtr<CompositingRenderTarget> surface;
+
+  Compositor* compositor = aManager->GetCompositor();
+
+  RefPtr<CompositingRenderTarget> previousTarget = compositor->GetCurrentRenderTarget();
+
+  nsIntRect visibleRect = aContainer->GetEffectiveVisibleRegion().GetBounds();
+
+  float opacity = aContainer->GetEffectiveOpacity();
+
+  SurfaceInitMode mode = INIT_MODE_CLEAR;
+  gfx::IntRect surfaceRect = gfx::IntRect(visibleRect.x, visibleRect.y,
+                                          visibleRect.width, visibleRect.height);
+  // we're about to create a framebuffer backed by textures to use as an intermediate
+  // surface. What to do if its size (as given by framebufferRect) would exceed the
+  // maximum texture size supported by the GL? The present code chooses the compromise
+  // of just clamping the framebuffer's size to the max supported size.
+  // This gives us a lower resolution rendering of the intermediate surface (children layers).
+  // See bug 827170 for a discussion.
+  int32_t maxTextureSize = compositor->GetMaxTextureSize();
+  surfaceRect.width = std::min(maxTextureSize, surfaceRect.width);
+  surfaceRect.height = std::min(maxTextureSize, surfaceRect.height);
+  if (aContainer->GetEffectiveVisibleRegion().GetNumRects() == 1 &&
+      (aContainer->GetContentFlags() & Layer::CONTENT_OPAQUE))
+  {
+    mode = INIT_MODE_NONE;
+  }
+
+  surface = compositor->CreateRenderTarget(surfaceRect, mode);
+  if (!surface) {
+    return;
+  }
+
+  compositor->SetRenderTarget(surface);
+
+  nsAutoTArray<Layer*, 12> children;
+  aContainer->SortChildrenBy3DZOrder(children);
+
+  /**
+   * Render this container's contents.
+   */
+  for (uint32_t i = 0; i < children.Length(); i++) {
+    LayerComposite* layerToRender = static_cast<LayerComposite*>(children.ElementAt(i)->ImplData());
+    Layer* layer = layerToRender->GetLayer();
+
+    if (layer->GetEffectiveVisibleRegion().IsEmpty() &&
+        !layer->AsContainerLayer()) {
+      continue;
+    }
+
+    nsIntRect clipRect = layer->
+        CalculateScissorRect(aClipRect, &aManager->GetWorldTransform());
+    if (clipRect.IsEmpty()) {
+      continue;
+    }
+
+    if (layer->GetType() == Layer::TYPE_CANVAS) {
+      // 
+    }
+
+    layerToRender->Prepare(clipRect);
+    layerToRender->RenderLayer(clipRect);
+
+    if (gfxPrefs::LayersScrollGraph()) DrawVelGraph(clipRect, aManager, layer);
+    if (gfxPrefs::UniformityInfo()) PrintUniformityInfo(layer);
+    if (gfxPrefs::DrawLayerInfo()) DrawLayerInfo(clipRect, aManager, layer);
+
+    // invariant: our GL context should be current here, I don't think we can
+    // assert it though
+  }
+
+  // Unbind the current surface and rebind the previous one.
+#ifdef MOZ_DUMP_PAINTING
+  if (gfxUtils::sDumpPainting) {
+    RefPtr<gfx::DataSourceSurface> surf = surface->Dump(aManager->GetCompositor());
+    if (surf) {
+      WriteSnapshotToDumpFile(aContainer, surf);
+    }
+  }
+#endif
+
+  compositor->SetRenderTarget(previousTarget);
+
+  // draw the temporary surface with VR distortion to the original destination
+  EffectChain effectChain(aContainer);
+  effectChain.mPrimaryEffect = new EffectVRDistortion(aHMD, surface);
+
+  // XXX we shouldn't use visibleRect here -- the VR distortion needs to know the
+  // full rect, not just the visible one.  Luckily, right now, VR distortion is only
+  // rendered when the element is fullscreen, so the visibleRect will be right anyway.
+  gfx::Rect rect(visibleRect.x, visibleRect.y, visibleRect.width, visibleRect.height);
+  gfx::Rect clipRect(aClipRect.x, aClipRect.y, aClipRect.width, aClipRect.height);
+  aManager->GetCompositor()->DrawQuad(rect, clipRect, effectChain, opacity,
+                                      aContainer->GetEffectiveTransform());
+}
+
 /* all of the prepared data that we need in RenderLayer() */
 struct PreparedData
 {
@@ -186,6 +289,15 @@ ContainerPrepare(ContainerT* aContainer,
 {
   aContainer->mPrepared = MakeUnique<PreparedData>();
   aContainer->mPrepared->mNeedsSurfaceCopy = false;
+
+  gfx::VRHMDInfo *hmdInfo = aContainer->GetVRHMDInfo();
+  if (hmdInfo && hmdInfo->GetConfiguration().IsValid()) {
+    // we're not going to do anything here; instead, we'll do it all in ContainerRender.
+    // XXX fix this; we can win with the same optimizations.  Specifically, we
+    // want to render thebes layers only once and then composite the intermeidate surfaces
+    // with different transforms twice.
+    return;
+  }
 
   /**
    * Determine which layers to draw.
@@ -422,6 +534,14 @@ ContainerRender(ContainerT* aContainer,
                  const nsIntRect& aClipRect)
 {
   MOZ_ASSERT(aContainer->mPrepared);
+
+  gfx::VRHMDInfo *hmdInfo = aContainer->GetVRHMDInfo();
+  if (hmdInfo && hmdInfo->GetConfiguration().IsValid()) {
+    ContainerRenderVR(aContainer, aManager, aClipRect, hmdInfo);
+    aContainer->mPrepared = nullptr;
+    return;
+  }
+
   if (aContainer->UseIntermediateSurface()) {
     RefPtr<CompositingRenderTarget> surface;
 
