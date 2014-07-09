@@ -480,6 +480,9 @@ gfxWindowsPlatform::CreateDevice(nsRefPtr<IDXGIAdapter1> &adapter1,
 #ifdef DEBUG
                     // This isn't set because of bug 1078411
                     // D3D10_CREATE_DEVICE_DEBUG |
+#ifdef DEBUG_vladimir
+                    D3D10_CREATE_DEVICE_DEBUG |
+#endif
 #endif
                     D3D10_CREATE_DEVICE_BGRA_SUPPORT |
                     D3D10_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS,
@@ -1531,6 +1534,9 @@ gfxWindowsPlatform::InitD3D11Devices()
   HRESULT hr;
 
   hr = d3d11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+#ifdef DEBUG
+                         D3D11_CREATE_DEVICE_DEBUG |
+#endif
                          D3D11_CREATE_DEVICE_BGRA_SUPPORT,
                          featureLevels.Elements(), featureLevels.Length(),
                          D3D11_SDK_VERSION, byRef(mD3D11Device), nullptr, nullptr);
@@ -1544,6 +1550,9 @@ gfxWindowsPlatform::InitD3D11Devices()
 #ifdef USE_D2D1_1
   if (Factory::SupportsD2D1()) {
     hr = d3d11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+#ifdef DEBUG
+                           D3D11_CREATE_DEVICE_DEBUG |
+#endif
                            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
                            featureLevels.Elements(), featureLevels.Length(),
                            D3D11_SDK_VERSION, byRef(mD3D11ContentDevice), nullptr, nullptr);
