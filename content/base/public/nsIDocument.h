@@ -25,6 +25,7 @@
 #include "Units.h"
 #include "nsExpirationTracker.h"
 #include "nsClassHashtable.h"
+#include "gfxVR.h"
 
 class imgIRequest;
 class nsAString;
@@ -131,6 +132,12 @@ template<typename> class Sequence;
 
 template<typename, typename> class CallbackObjectHolder;
 typedef CallbackObjectHolder<NodeFilter, nsIDOMNodeFilter> NodeFilterHolder;
+
+struct FullScreenOptions {
+  FullScreenOptions() { }
+  nsRefPtr<gfx::VRHMDInfo> mVRHMDDevice;
+};
+
 } // namespace dom
 } // namespace mozilla
 
@@ -160,6 +167,7 @@ already_AddRefed<nsContentList>
 NS_GetContentList(nsINode* aRootNode,
                   int32_t aMatchNameSpaceId,
                   const nsAString& aTagname);
+
 //----------------------------------------------------------------------
 
 // Document interface.  This is implemented by all document objects in
@@ -1041,7 +1049,8 @@ public:
    * the <iframe> or <browser> that contains this document is also mode
    * fullscreen. This happens recursively in all ancestor documents.
    */
-  virtual void AsyncRequestFullScreen(Element* aElement) = 0;
+  virtual void AsyncRequestFullScreen(Element* aElement,
+                                      mozilla::dom::FullScreenOptions& aOptions) = 0;
 
   /**
    * Called when a frame in a child process has entered fullscreen or when a
