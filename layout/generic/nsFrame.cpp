@@ -100,6 +100,12 @@ using namespace mozilla::gfx;
 using namespace mozilla::layers;
 using namespace mozilla::layout;
 
+namespace mozilla {
+namespace gfx {
+class VRHMDInfo;
+}
+}
+
 // Struct containing cached metrics for box-wrapped frames.
 struct nsBoxLayoutMetrics
 {
@@ -1627,6 +1633,12 @@ inline static bool IsSVGContentWithCSSClip(const nsIFrame *aFrame)
     (tag == nsGkAtoms::svg || tag == nsGkAtoms::foreignObject);
 }
 
+inline static bool IsContentWithVRFlag(const nsIFrame *aFrame)
+{
+  nsIContent *content = aFrame->GetContent();
+  return content && content->GetProperty(nsGkAtoms::vr_state) != nullptr;
+}
+
 bool
 nsIFrame::GetClipPropClipRect(const nsStyleDisplay* aDisp, nsRect* aRect,
                               const nsSize& aSize) const
@@ -1974,8 +1986,12 @@ nsIFrame::BuildDisplayListForStackingContext(nsDisplayListBuilder* aBuilder,
                         nsLayoutUtils::SCROLLABLE_SAME_DOC |
                         nsLayoutUtils::SCROLLABLE_INCLUDE_HIDDEN));
 
+
   nsDisplayListBuilder::AutoBuildingDisplayList
     buildingDisplayList(aBuilder, this, dirtyRect, true);
+
+  mozilla::gfx::VRHMDInfo* vrHMDInfo = mContent ? static_cast<mozilla::gfx::VRHMDInfo*>(mContent->GetProperty(nsGkAtoms::vr_state)) : nullptr;
+
   DisplayListClipState::AutoSaveRestore clipState(aBuilder);
 
   if (isTransformed || useOpacity || useBlendMode || usingSVGEffects || useStickyPosition) {
@@ -2134,6 +2150,13 @@ nsIFrame::BuildDisplayListForStackingContext(nsDisplayListBuilder* aBuilder,
       resultList.AppendNewToTop(
         new (aBuilder) nsDisplayTransform(aBuilder, this, &resultList, dirtyRect));
     }
+  }
+
+  /* If we're doing VR rendering, then we need to wrap everything in a nsDisplayVR
+   */
+  if (vrHMDInfo && !resultList.IsEmpty()) {
+    resultList.AppendNewToTop(
+      new (aBuilder) nsDisplayVR(aBuilder, this, &resultList, vrHMDInfo));
   }
 
   /* If adding both a nsDisplayBlendContainer and a nsDisplayMixBlendMode to the
@@ -2306,7 +2329,8 @@ nsIFrame::BuildDisplayListForChild(nsDisplayListBuilder*   aBuilder,
     // but the spec says it acts like the rest of these
     || disp->mChildPerspective.GetUnit() == eStyleUnit_Coord
     || disp->mMixBlendMode != NS_STYLE_BLEND_NORMAL
-    || nsSVGIntegrationUtils::UsingEffectsForFrame(child);
+    || nsSVGIntegrationUtils::UsingEffectsForFrame(child)
+    || IsContentWithVRFlag(child);
 
   bool isPositioned = disp->IsPositioned(child);
   bool isStackingContext =
