@@ -187,7 +187,6 @@ ContainerRenderVR(ContainerT* aContainer,
 
   float opacity = aContainer->GetEffectiveOpacity();
 
-  SurfaceInitMode mode = INIT_MODE_CLEAR;
   gfx::IntRect surfaceRect = gfx::IntRect(visibleRect.x, visibleRect.y,
                                           visibleRect.width, visibleRect.height);
   // we're about to create a framebuffer backed by textures to use as an intermediate
@@ -199,13 +198,9 @@ ContainerRenderVR(ContainerT* aContainer,
   int32_t maxTextureSize = compositor->GetMaxTextureSize();
   surfaceRect.width = std::min(maxTextureSize, surfaceRect.width);
   surfaceRect.height = std::min(maxTextureSize, surfaceRect.height);
-  if (aContainer->GetEffectiveVisibleRegion().GetNumRects() == 1 &&
-      (aContainer->GetContentFlags() & Layer::CONTENT_OPAQUE))
-  {
-    mode = INIT_MODE_NONE;
-  }
 
-  surface = compositor->CreateRenderTarget(surfaceRect, mode);
+  // use NONE here, because we draw black to clear below
+  surface = compositor->CreateRenderTarget(surfaceRect, INIT_MODE_NONE);
   if (!surface) {
     return;
   }
@@ -260,16 +255,27 @@ ContainerRenderVR(ContainerT* aContainer,
 
   compositor->SetRenderTarget(previousTarget);
 
+  gfx::Rect rect(visibleRect.x, visibleRect.y, visibleRect.width, visibleRect.height);
+  gfx::Rect clipRect(aClipRect.x, aClipRect.y, aClipRect.width, aClipRect.height);
+
+  // The VR geometry may not cover the entire area; we need to fill with a solid color
+  // first.
+  // XXX should DrawQuad handle this on its own?  Is there a time where we wouldn't want
+  // to do this? (e.g. something like Cardboard would not require distortion so will fill
+  // the entire rect)
+  EffectChain solidEffect(aContainer);
+  solidEffect.mPrimaryEffect = new EffectSolidColor(Color(0.0, 0.0, 0.0, 1.0));
+  aManager->GetCompositor()->DrawQuad(rect, clipRect, solidEffect, opacity,
+                                      aContainer->GetEffectiveTransform());
+
   // draw the temporary surface with VR distortion to the original destination
-  EffectChain effectChain(aContainer);
-  effectChain.mPrimaryEffect = new EffectVRDistortion(aHMD, surface);
+  EffectChain vrEffect(aContainer);
+  vrEffect.mPrimaryEffect = new EffectVRDistortion(aHMD, surface);
 
   // XXX we shouldn't use visibleRect here -- the VR distortion needs to know the
   // full rect, not just the visible one.  Luckily, right now, VR distortion is only
   // rendered when the element is fullscreen, so the visibleRect will be right anyway.
-  gfx::Rect rect(visibleRect.x, visibleRect.y, visibleRect.width, visibleRect.height);
-  gfx::Rect clipRect(aClipRect.x, aClipRect.y, aClipRect.width, aClipRect.height);
-  aManager->GetCompositor()->DrawQuad(rect, clipRect, effectChain, opacity,
+  aManager->GetCompositor()->DrawQuad(rect, clipRect, vrEffect, opacity,
                                       aContainer->GetEffectiveTransform());
 }
 
