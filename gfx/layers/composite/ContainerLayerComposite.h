@@ -52,6 +52,12 @@ class ContainerLayerComposite : public ContainerLayer,
                         LayerManagerComposite* aManager,
                         const RenderTargetIntRect& aClipRect);
 
+  template<class ContainerT>
+  friend void ContainerRenderVR(ContainerT* aContainer,
+                                LayerManagerComposite* aManager,
+                                const nsIntRect& aClipRect,
+                                gfx::VRHMDInfo* aHMD);
+
 public:
   explicit ContainerLayerComposite(LayerManagerComposite *aManager);
 
@@ -116,6 +122,11 @@ class RefLayerComposite : public RefLayer,
                         LayerManagerComposite* aManager,
                         const nsIntRect& aClipRect);
 
+  template<class ContainerT>
+  friend void ContainerRenderVR(ContainerT* aContainer,
+                                LayerManagerComposite* aManager,
+                                const nsIntRect& aClipRect,
+                                gfx::VRHMDInfo* aHMD);
 public:
   explicit RefLayerComposite(LayerManagerComposite *aManager);
 

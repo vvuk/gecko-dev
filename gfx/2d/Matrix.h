@@ -375,6 +375,11 @@ public:
     , _41(a41), _42(a42), _43(a43), _44(a44)
   {}
 
+  Matrix4x4(const Matrix4x4& aOther)
+  {
+    memcpy(this, &aOther, sizeof(*this));
+  }
+
   Float _11, _12, _13, _14;
   Float _21, _22, _23, _24;
   Float _31, _32, _33, _34;
@@ -539,6 +544,11 @@ public:
                        aX,   aY,   aZ, 1.0f);
   }
 
+  static Matrix4x4 Translation(const Point3D& aP)
+  {
+    return Translation(aP.x, aP.y, aP.z);
+  }
+
   /**
    * Apply a translation to this matrix.
    *
@@ -566,6 +576,10 @@ public:
     _44 += aX * _14 + aY * _24 + aZ * _34;
 
     return *this;
+  }
+
+  Matrix4x4 &Translate(const Point3D& aPoint) {
+    return Translate(aPoint.x, aPoint.y, aPoint.z);
   }
 
   /**
@@ -667,6 +681,19 @@ public:
 
     // Translate back into position after applying this matrix
     PostTranslate(aX, aY, aZ);
+
+    return *this;
+  }
+
+  Matrix4x4& Transpose() {
+    std::swap(_12, _21);
+    std::swap(_13, _31);
+    std::swap(_14, _41);
+
+    std::swap(_23, _32);
+    std::swap(_24, _42);
+
+    std::swap(_34, _43);
 
     return *this;
   }

@@ -15,6 +15,7 @@
 #include "mozilla/layers/CompositorTypes.h"  // for DiagnosticTypes, etc
 #include "mozilla/layers/FenceUtils.h"  // for FenceHandle
 #include "mozilla/layers/LayersTypes.h"  // for LayersBackend
+#include "mozilla/layers/TextureHost.h" // for CompositingRenderTarget
 #include "nsISupportsImpl.h"            // for MOZ_COUNT_CTOR, etc
 #include "nsRegion.h"
 #include <vector>
@@ -125,7 +126,6 @@ class ISurfaceAllocator;
 class Layer;
 class TextureSource;
 class DataTextureSource;
-class CompositingRenderTarget;
 class PCompositorParent;
 class LayerManagerComposite;
 
@@ -284,10 +284,24 @@ public:
                                const gfx::IntPoint& aSourcePoint) = 0;
 
   /**
-   * Sets the given surface as the target for subsequent calls to DrawQuad.
-   * Passing null as aSurface sets the screen as the target.
+   * Sets the given surface as the target for subsequent draw calls.
+   * The given rectangle, world transform, and projection matrix are used
+   * as a viewport, and will be restored on PopRenderTarget.
    */
-  virtual void SetRenderTarget(CompositingRenderTarget* aSurface) = 0;
+  virtual void PushRenderTarget(CompositingRenderTarget* aRenderTarget,
+                                const gfx::IntRect& aRect,
+                                const gfx::Matrix4x4& aProjectionMatrix) = 0;
+
+  /**
+   * Shorthand for PushRenderTarget, when the viewport covers the full
+   * surface and there isn't a complex transform or projection.
+   */
+  virtual void PushRenderTarget(CompositingRenderTarget* aRenderTarget) = 0;
+
+  /**
+   * Restores the previous render target and its viewport.
+   */
+  virtual void PopRenderTarget() = 0;
 
   /**
    * Returns the current target for rendering. Will return null if we are
@@ -379,7 +393,10 @@ public:
    * render using a different viewport (that is, size and transform), usually
    * associated with a new render target.
    */
-  virtual void PrepareViewport(const gfx::IntSize& aSize) = 0;
+  virtual void PrepareViewport(const gfx::IntRect& aRect) = 0;
+
+  virtual void PrepareViewport3D(const gfx::IntRect& aRect,
+                                 const gfx::Matrix4x4& aProjectionMatrix) = 0;
 
   /**
    * Whether textures created by this compositor can receive partial updates.
@@ -534,6 +551,26 @@ protected:
 
   RefPtr<gfx::DrawTarget> mTarget;
   nsIntRect mTargetBounds;
+
+  struct RenderTargetStackEntry {
+    RefPtr<CompositingRenderTarget> mTarget;
+    gfx::IntRect mRect;
+    bool mIs3D;
+    gfx::Matrix4x4 mProjectionMatrix;
+  };
+
+  nsTArray<RenderTargetStackEntry> mRenderTargetStack;
+
+  RenderTargetStackEntry& RenderTargetStackTop() { return mRenderTargetStack.LastElement(); }
+
+  void UpdateTopRenderTargetStackViewport(const gfx::IntRect& aRect,
+                                          const gfx::Matrix4x4& aProjection);
+
+  void UpdateTopRenderTargetStackViewport(const gfx::IntRect& aRect)
+  {
+    UpdateTopRenderTargetStackViewport(aRect, gfx::Matrix4x4());
+    RenderTargetStackTop().mIs3D = false;
+  }
 
 private:
   static LayersBackend sBackend;

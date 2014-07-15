@@ -170,78 +170,153 @@ struct PreparedLayer
   nsIntRegion mSavedVisibleRegion;
 };
 
-
 template<class ContainerT> void
 ContainerRenderVR(ContainerT* aContainer,
                   LayerManagerComposite* aManager,
                   const nsIntRect& aClipRect,
                   gfx::VRHMDInfo* aHMD)
 {
-  RefPtr<CompositingRenderTarget> surface;
-
   Compositor* compositor = aManager->GetCompositor();
 
-  RefPtr<CompositingRenderTarget> previousTarget = compositor->GetCurrentRenderTarget();
+  // XXX if we only have one child, and if that child is a CanvasLayer (or something else that we can
+  // directly render, such as an ImageLayer), and it has CONTENT_NATIVE_VR set, we should be able
+  // to skip basically all of this, and just render it with the VR distortion effect.
+
+  RefPtr<CompositingRenderTarget> surface;
 
   nsIntRect visibleRect = aContainer->GetEffectiveVisibleRegion().GetBounds();
-
   float opacity = aContainer->GetEffectiveOpacity();
 
   gfx::IntRect surfaceRect = gfx::IntRect(visibleRect.x, visibleRect.y,
                                           visibleRect.width, visibleRect.height);
-  // we're about to create a framebuffer backed by textures to use as an intermediate
-  // surface. What to do if its size (as given by framebufferRect) would exceed the
-  // maximum texture size supported by the GL? The present code chooses the compromise
-  // of just clamping the framebuffer's size to the max supported size.
-  // This gives us a lower resolution rendering of the intermediate surface (children layers).
-  // See bug 827170 for a discussion.
+
+  // make sure that our intermediate surfaces don't exceed the max texture size.
+  // XXX these should be based on the HMDInfo's SuggestedEyeResolution()!
+  // XXX we need to support vertically-oriented eye stacking,
+  // we'll want to figure out how the eye rendering should look like.
+  // our full screen will be tall and narrow, so we'll need to create
+  // a proper sized surface
+
   int32_t maxTextureSize = compositor->GetMaxTextureSize();
-  surfaceRect.width = std::min(maxTextureSize, surfaceRect.width);
+  int32_t eyeWidth = surfaceRect.width / 2;
+  surfaceRect.width = std::min(maxTextureSize, eyeWidth * 2);
   surfaceRect.height = std::min(maxTextureSize, surfaceRect.height);
 
-  // use NONE here, because we draw black to clear below
-  surface = compositor->CreateRenderTarget(surfaceRect, INIT_MODE_NONE);
+  // create the one compositing surface for both eyes
+  surface = compositor->CreateRenderTarget(surfaceRect, INIT_MODE_CLEAR);
   if (!surface) {
+    NS_WARNING("failed to create render target for VR eye intermediate");
     return;
   }
 
-  compositor->SetRenderTarget(surface);
+  compositor->PushRenderTarget(surface);
 
   nsAutoTArray<Layer*, 12> children;
   aContainer->SortChildrenBy3DZOrder(children);
 
   /**
-   * Render this container's contents.
+   * Render this container's contents.  We first render the "native VR" layers, stretching them
+   * across the full VR area.  Then we render each layer twice, once for each eye,
+   * with different transforms.
    */
+  gfx::Matrix4x4 origTransform(aContainer->mEffectiveTransform);
+
+  nsIntRect surfaceClipRect(0, 0, surfaceRect.width, surfaceRect.height);
+  RenderTargetIntRect rtClipRect(0, 0, surfaceRect.width, surfaceRect.height);
   for (uint32_t i = 0; i < children.Length(); i++) {
     LayerComposite* layerToRender = static_cast<LayerComposite*>(children.ElementAt(i)->ImplData());
     Layer* layer = layerToRender->GetLayer();
+    uint32_t contentFlags = layer->GetContentFlags();
 
     if (layer->GetEffectiveVisibleRegion().IsEmpty() &&
         !layer->AsContainerLayer()) {
       continue;
     }
 
-    nsIntRect clipRect = layer->
-        CalculateScissorRect(aClipRect, &aManager->GetWorldTransform());
+    RenderTargetIntRect clipRect = layer->CalculateScissorRect(rtClipRect);
     if (clipRect.IsEmpty()) {
       continue;
     }
 
-    if (layer->GetType() == Layer::TYPE_CANVAS) {
-      // 
+    if (contentFlags & Layer::CONTENT_PRESERVE_3D &&
+        !(contentFlags & Layer::CONTENT_NATIVE_VR))
+    {
+      continue;
     }
 
-    layerToRender->Prepare(clipRect);
-    layerToRender->RenderLayer(clipRect);
-
-    if (gfxPrefs::LayersScrollGraph()) DrawVelGraph(clipRect, aManager, layer);
-    if (gfxPrefs::UniformityInfo()) PrintUniformityInfo(layer);
-    if (gfxPrefs::DrawLayerInfo()) DrawLayerInfo(clipRect, aManager, layer);
-
-    // invariant: our GL context should be current here, I don't think we can
-    // assert it though
+    layerToRender->Prepare(rtClipRect);
+    layerToRender->RenderLayer(surfaceClipRect);
   }
+
+  /*
+   * Then the non-native-VR layers.
+   * XXX rendering them twice for each eye causes the Thebes layers
+   * to also render their content twice, which is unnecessary and expensive.  We need to fix
+   * that, so that they can reuse their previous texture for the second rendering.
+   */
+
+  nsIntRect eyeClipRect(0, 0, eyeWidth, surfaceRect.height);
+  RenderTargetIntRect rtEyeClipRect(0, 0, eyeWidth, surfaceRect.height);
+  for (uint32_t eye = 0; eye < 2; ++eye) {
+    //printf_stderr("===== eye %d =====\n", eye);
+
+    // set up the viewport for the proper rect for this eye.
+    // XXX fix this for vertical displays
+    // XXX There is no matrix.Translate that takes a Point?!?!?!
+    gfx::Point3D eyeTranslation = aHMD->GetEyeTranslation(eye);
+    gfx::IntRect eyeRect(eye * eyeWidth, 0, eyeWidth, surfaceRect.height);
+    gfx::Matrix4x4 eyeProjection = aHMD->GetEyeProjectionMatrix(eye);
+
+    compositor->PrepareViewport3D(eyeRect, eyeProjection);
+
+    gfx::Matrix4x4 eyeTransform = gfx::Matrix4x4::Translation(eyeTranslation) * origTransform;
+
+    // make sure mEffectiveTransform is up to date for traversal
+    aContainer->mEffectiveTransform = eyeTransform;
+    aContainer->ComputeEffectiveTransformsForChildren(eyeTransform);
+
+    for (uint32_t i = 0; i < children.Length(); i++) {
+      LayerComposite* layerToRender = static_cast<LayerComposite*>(children.ElementAt(i)->ImplData());
+      Layer* layer = layerToRender->GetLayer();
+      uint32_t contentFlags = layer->GetContentFlags();
+
+#if 0
+      printf_stderr("VR Container, child %d type %s flags (0x%04x): PRESERVE_3D %s NATIVE_VR %s OPAQUE %s\n",
+                    i, layer->Name(), contentFlags,
+                    contentFlags & Layer::CONTENT_PRESERVE_3D ? "YES" : "no",
+                    contentFlags & Layer::CONTENT_NATIVE_VR ? "YES" : "no",
+                    contentFlags & Layer::CONTENT_OPAQUE ? "YES" : "no");
+#endif
+
+      if (layer->GetEffectiveVisibleRegion().IsEmpty() &&
+          !layer->AsContainerLayer()) {
+        continue;
+      }
+
+      if (!(contentFlags & Layer::CONTENT_PRESERVE_3D) ||
+          contentFlags & Layer::CONTENT_NATIVE_VR)
+      {
+        continue;
+      }
+
+      // XXX this is not the right calculation I don't think.  The manager world transform
+      // should not be relevant here if we're going to apply a VR distortion.
+      RenderTargetIntRect clipRect = layer->CalculateScissorRect(rtEyeClipRect);
+      if (clipRect.IsEmpty()) {
+        continue;
+      }
+
+      layerToRender->Prepare(clipRect);
+      layerToRender->RenderLayer(eyeClipRect);
+
+      if (gfxPrefs::DrawLayerInfo()) DrawLayerInfo(clipRect, aManager, layer);
+    }
+    //printf_stderr("=======\n");
+  }
+
+  // restore previous global transform
+  aContainer->mEffectiveTransform = origTransform;
+  aContainer->ComputeEffectiveTransformsForChildren(origTransform);
 
   // Unbind the current surface and rebind the previous one.
 #ifdef MOZ_DUMP_PAINTING
@@ -253,7 +328,10 @@ ContainerRenderVR(ContainerT* aContainer,
   }
 #endif
 
-  compositor->SetRenderTarget(previousTarget);
+  compositor->PopRenderTarget();
+
+  //gfx::Rect rect(visibleRect.x, visibleRect.y, visibleRect.width * 2, visibleRect.height);
+  //gfx::Rect clipRect(aClipRect.x, aClipRect.y, aClipRect.width * 2, aClipRect.height);
 
   gfx::Rect rect(visibleRect.x, visibleRect.y, visibleRect.width, visibleRect.height);
   gfx::Rect clipRect(aClipRect.x, aClipRect.y, aClipRect.width, aClipRect.height);
@@ -271,6 +349,7 @@ ContainerRenderVR(ContainerT* aContainer,
   // draw the temporary surface with VR distortion to the original destination
   EffectChain vrEffect(aContainer);
   vrEffect.mPrimaryEffect = new EffectVRDistortion(aHMD, surface);
+  //vrEffect.mPrimaryEffect = new EffectRenderTarget(surface);
 
   // XXX we shouldn't use visibleRect here -- the VR distortion needs to know the
   // full rect, not just the visible one.  Luckily, right now, VR distortion is only
@@ -304,6 +383,8 @@ ContainerPrepare(ContainerT* aContainer,
     // with different transforms twice.
     return;
   }
+
+  //printf_stderr(">>> ContainerRender\n");
 
   /**
    * Determine which layers to draw.
@@ -521,17 +602,16 @@ RenderIntermediate(ContainerT* aContainer,
                    const nsIntRect& aClipRect,
                    RefPtr<CompositingRenderTarget> surface)
 {
-  Compositor* compositor = aManager->GetCompositor();
-  RefPtr<CompositingRenderTarget> previousTarget = compositor->GetCurrentRenderTarget();
-
   if (!surface) {
     return;
   }
-  compositor->SetRenderTarget(surface);
+
+  Compositor* compositor = aManager->GetCompositor();
+  compositor->PushRenderTarget(surface);
   // pre-render all of the layers into our temporary
   RenderLayers(aContainer, aManager, RenderTargetPixel::FromUntyped(aClipRect));
   // Unbind the current surface and rebind the previous one.
-  compositor->SetRenderTarget(previousTarget);
+  compositor->PopRenderTarget();
 }
 
 template<class ContainerT> void

@@ -193,5 +193,15 @@ Compositor::DrawDiagnosticsInternal(DiagnosticFlags aFlags,
                  aTransform);
 }
 
+void
+Compositor::UpdateTopRenderTargetStackViewport(const gfx::IntRect& aRect,
+                                               const gfx::Matrix4x4& aProjection)
+{
+  RenderTargetStackEntry& entry(mRenderTargetStack.LastElement());
+  entry.mRect = aRect;
+  entry.mProjectionMatrix = aProjection;
+  entry.mIs3D = true;
+}
+
 } // namespace
 } // namespace

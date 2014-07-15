@@ -1618,6 +1618,9 @@ public:
   bool HasPendingReflow() const
     { return mReflowScheduled || mReflowContinueTimer; }
 
+  virtual void SetVRRendering(bool aEnabled) = 0;
+  virtual bool IsVRRendering() = 0;
+
 protected:
   friend class nsRefreshDriver;
 

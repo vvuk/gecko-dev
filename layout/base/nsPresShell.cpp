@@ -764,6 +764,8 @@ PresShell::PresShell()
   mXResolution = 1.0;
   mYResolution = 1.0;
   mViewportOverridden = false;
+  mNormalWidth = 0;
+  mNormalHeight = 0;
 
   mScrollPositionClampingScrollPortSizeSet = false;
 
@@ -1837,6 +1839,9 @@ PresShell::Initialize(nscoord aWidth, nscoord aHeight)
   // XXX Do a full invalidate at the beginning so that invalidates along
   // the way don't have region accumulation issues?
 
+  mNormalWidth = aWidth;
+  mNormalHeight = aHeight;
+
   mPresContext->SetVisibleArea(nsRect(0, 0, aWidth, aHeight));
 
   // Get the root frame from the frame manager
@@ -2017,6 +2022,9 @@ PresShell::ResizeReflowIgnoreOverride(nscoord aWidth, nscoord aHeight)
   NS_PRECONDITION(aWidth != NS_UNCONSTRAINEDSIZE,
                   "shouldn't use unconstrained widths anymore");
 
+  mNormalWidth = aWidth;
+  mNormalHeight = aHeight;
+
   // If we don't have a root frame yet, that means we haven't had our initial
   // reflow... If that's the case, and aWidth or aHeight is unconstrained,
   // ignore them altogether.
@@ -2025,6 +2033,12 @@ PresShell::ResizeReflowIgnoreOverride(nscoord aWidth, nscoord aHeight)
     // We can't do the work needed for SizeToContent without a root
     // frame, and we want to return before setting the visible area.
     return NS_ERROR_NOT_AVAILABLE;
+  }
+
+  // If we're rendering with VR, then we will pretend to be half the width
+  // XXX handle height-oriented displays too
+  if (mVRRenderingEnabled) {
+    //aWidth = aWidth / 2;
   }
 
   mPresContext->SetVisibleArea(nsRect(0, 0, aWidth, aHeight));
@@ -2124,6 +2138,16 @@ PresShell::FireResizeEvent()
     EventDispatcher::Dispatch(window, mPresContext, &event, nullptr, &status);
     mInResize = false;
   }
+}
+
+void
+PresShell::SetVRRendering(bool aEnabled)
+{
+  if (mVRRenderingEnabled == aEnabled)
+    return;
+
+  mVRRenderingEnabled = aEnabled;
+  ResizeReflowIgnoreOverride(mNormalWidth, mNormalHeight);
 }
 
 void

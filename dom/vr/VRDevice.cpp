@@ -146,15 +146,22 @@ void
 HMDVRDevice::XxxToggleElementVR(Element& aElement)
 {
   VRHMDInfo* hmdPtr = static_cast<VRHMDInfo*>(aElement.GetProperty(nsGkAtoms::vr_state));
+  bool enterVR;
   if (hmdPtr) {
     aElement.DeleteProperty(nsGkAtoms::vr_state);
-    return;
+    enterVR = false;
+  } else {
+    nsRefPtr<VRHMDInfo> hmdRef = mHMD;
+    aElement.SetProperty(nsGkAtoms::vr_state, hmdRef.forget().take(),
+                         ReleaseHMDInfoRef,
+                         true);
+    enterVR = true;
   }
 
-  nsRefPtr<VRHMDInfo> hmdRef = mHMD;
-  aElement.SetProperty(nsGkAtoms::vr_state, hmdRef.forget().take(),
-                       ReleaseHMDInfoRef,
-                       true);
+  nsIFrame *f = aElement.GetPrimaryFrame();
+  if (f) {
+    f->PresContext()->GetPresShell()->SetVRRendering(enterVR);
+  }
 }
 
 namespace {

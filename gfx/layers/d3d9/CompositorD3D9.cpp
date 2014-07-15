@@ -200,13 +200,65 @@ CompositorD3D9::CreateRenderTargetFromSource(const gfx::IntRect &aRect,
 }
 
 void
+CompositorD3D9::PushRenderTarget(CompositingRenderTarget* aRenderTarget)
+{
+  CompositingRenderTargetD3D9* newRT =
+    static_cast<CompositingRenderTargetD3D9*>(aRenderTarget);
+
+  gfx::Matrix4x4 zeroZ;
+  zeroZ._33 = 0.0f;
+
+  PushRenderTarget(aRenderTarget,
+                   gfx::IntRect(gfx::IntPoint(0, 0), newRT->GetSize()),
+                   zeroZ);
+}
+
+void
+CompositorD3D9::PushRenderTarget(CompositingRenderTarget* aRenderTarget,
+                                 const gfx::IntRect& aRect,
+                                 const gfx::Matrix4x4& aProjectionMatrix)
+{
+  // need a new element, which will be filled in by SetRenderTarget and
+  // PrepareViewport3D
+  mRenderTargetStack.AppendElement();
+  SetRenderTarget(aRenderTarget);
+  PrepareViewport3D(aRect, aProjectionMatrix);
+}
+
+void
+CompositorD3D9::PopRenderTarget()
+{
+  MOZ_ASSERT(mRenderTargetStack.Length() > 0);
+
+  // nuke the last element
+  mRenderTargetStack.SetLength(mRenderTargetStack.Length() - 1);
+
+  if (mRenderTargetStack.Length() > 0) {
+    RenderTargetStackEntry& entry(mRenderTargetStack.LastElement());
+    SetRenderTarget(entry.mTarget);
+    PrepareViewport3D(entry.mRect, entry.mProjectionMatrix);
+  } else {
+    // going back to default render target
+    SetRenderTarget(mDefaultRT);
+    PrepareViewport(gfx::IntRect(gfx::IntPoint(0, 0), mDefaultRT->GetSize()));
+  }
+}
+
+void
 CompositorD3D9::SetRenderTarget(CompositingRenderTarget *aRenderTarget)
 {
   MOZ_ASSERT(aRenderTarget && mDeviceManager);
   RefPtr<CompositingRenderTargetD3D9> oldRT = mCurrentRT;
   mCurrentRT = static_cast<CompositingRenderTargetD3D9*>(aRenderTarget);
   mCurrentRT->BindRenderTarget(device());
-  PrepareViewport(mCurrentRT->GetSize());
+
+  // XXX merge issue, who's calling SetRenderTarget
+  //PrepareViewport(mCurrentRT->GetSize());
+
+  // update the current top render target
+  if (mRenderTargetStack.Length() > 0) {
+    mRenderTargetStack.LastElement().mTarget = aRenderTarget;
+  }
 }
 
 static DeviceManagerD3D9::ShaderMode
@@ -673,15 +725,25 @@ CompositorD3D9::EndFrame()
 }
 
 void
-CompositorD3D9::PrepareViewport(const gfx::IntSize& aSize)
+CompositorD3D9::PrepareViewport(const gfx::IntRect& aRect)
 {
+  D3DVIEWPORT9 viewport;
+  viewport.MaxZ = 1.0f;
+  viewport.MinZ = 0.0f;
+  viewport.Width = aRect.width;
+  viewport.Height = aRect.height;
+  viewport.X = aRect.x;
+  viewport.Y = aRect.y;
+
+  device()->SetViewport(&viewport);
+
   Matrix4x4 viewMatrix;
   /*
    * Matrix to transform to viewport space ( <-1.0, 1.0> topleft,
    * <1.0, -1.0> bottomright)
    */
-  viewMatrix._11 = 2.0f / aSize.width;
-  viewMatrix._22 = -2.0f / aSize.height;
+  viewMatrix._11 = 2.0f / aRect.width;
+  viewMatrix._22 = -2.0f / aRect.height;
   viewMatrix._41 = -1.0f;
   viewMatrix._42 = 1.0f;
 
@@ -690,6 +752,13 @@ CompositorD3D9::PrepareViewport(const gfx::IntSize& aSize)
   if (FAILED(hr)) {
     NS_WARNING("Failed to set projection matrix");
   }
+}
+
+void
+CompositorD3D9::PrepareViewport3D(const gfx::IntRect& aRect,
+                                  const Matrix4x4 &aProjection)
+{
+  PrepareViewport(aRect);
 }
 
 void

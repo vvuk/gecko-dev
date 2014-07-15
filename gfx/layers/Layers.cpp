@@ -637,10 +637,11 @@ Layer::CalculateScissorRect(const RenderTargetIntRect& aCurrentScissorRect)
   NS_ASSERTION(container, "This can't be called on the root!");
 
   // Establish initial clip rect: it's either the one passed in, or
-  // if the parent has an intermediate surface, it's the extents of that surface.
+  // if the parent has an intermediate surface, it's the intersection of that size and
+  // the one passed in.
   RenderTargetIntRect currentClip;
   if (container->UseIntermediateSurface()) {
-    currentClip.SizeTo(container->GetIntermediateSurfaceRect().Size());
+    currentClip = aCurrentScissorRect.Intersect(container->GetIntermediateSurfaceRect());
   } else {
     currentClip = aCurrentScissorRect;
   }
@@ -1048,7 +1049,7 @@ ContainerLayer::DefaultComputeEffectiveTransforms(const Matrix4x4& aTransformToS
   } else if (gfxUtils::sDumpPainting) {
     useIntermediateSurface = true;
 #endif
-  } else if (keep3D && !mEffectiveTransform.Is2D()) {
+  } else if (mHMDInfo || (keep3D && !mEffectiveTransform.Is2D())) {
     useIntermediateSurface = true;
   } else {
     float opacity = GetEffectiveOpacity();

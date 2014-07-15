@@ -416,6 +416,10 @@ protected:
   // Reflow regardless of whether the override bit has been set.
   nsresult ResizeReflowIgnoreOverride(nscoord aWidth, nscoord aHeight);
 
+  // Set VR rendering on or off on this PresShell
+  void     SetVRRendering(bool aEnabled) MOZ_OVERRIDE;
+  bool     IsVRRendering() MOZ_OVERRIDE { return mVRRenderingEnabled; }
+
   // DoReflow returns whether the reflow finished without interruption
   bool DoReflow(nsIFrame* aFrame, bool aInterruptible);
 #ifdef DEBUG
@@ -794,6 +798,9 @@ protected:
 
   nscoord                   mLastAnchorScrollPositionY;
 
+  // The set values for width/height, for use after VR has stopped
+  nscoord                   mNormalWidth, mNormalHeight;
+
   // This is used to protect ourselves from triggering reflow while in the
   // middle of frame construction and the like... it really shouldn't be
   // needed, one hopes, but it is for now.
@@ -823,6 +830,8 @@ protected:
   bool                      mNextPaintCompressed : 1;
 
   bool                      mHasCSSBackgroundColor : 1;
+
+  bool                      mVRRenderingEnabled : 1;
 
   static bool               sDisableNonTestMouseEvents;
 };

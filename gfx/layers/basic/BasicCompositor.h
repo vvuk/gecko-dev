@@ -70,10 +70,14 @@ public:
 
   virtual bool SupportsEffect(EffectTypes aEffect) MOZ_OVERRIDE;
 
-  virtual void SetRenderTarget(CompositingRenderTarget *aSource) MOZ_OVERRIDE
-  {
-    mRenderTarget = static_cast<BasicCompositingRenderTarget*>(aSource);
-  }
+  virtual void PushRenderTarget(CompositingRenderTarget* aRenderTarget,
+                                const gfx::IntRect& aRect,
+                                const gfx::Matrix4x4& aProjectionMatrix) MOZ_OVERRIDE;
+
+  virtual void PushRenderTarget(CompositingRenderTarget* aRenderTarget) MOZ_OVERRIDE;
+
+  virtual void PopRenderTarget() MOZ_OVERRIDE;
+
   virtual CompositingRenderTarget* GetCurrentRenderTarget() const MOZ_OVERRIDE
   {
     return mRenderTarget;
@@ -109,7 +113,10 @@ public:
 
   virtual void MakeCurrent(MakeCurrentFlags aFlags = 0) { }
 
-  virtual void PrepareViewport(const gfx::IntSize& aSize) MOZ_OVERRIDE { }
+  virtual void PrepareViewport(const gfx::IntRect& aRect) MOZ_OVERRIDE { }
+
+  virtual void PrepareViewport3D(const gfx::IntRect& aRect,
+                                 const gfx::Matrix4x4& aProjectionMatrix) MOZ_OVERRIDE { }
 
   virtual const char* Name() const { return "Basic"; }
 
@@ -124,6 +131,12 @@ public:
 private:
 
   virtual gfx::IntSize GetWidgetSize() const MOZ_OVERRIDE { return mWidgetSize; }
+
+  void SetRenderTarget(CompositingRenderTarget *aSource)
+  {
+    mRenderTarget = static_cast<BasicCompositingRenderTarget*>(aSource);
+    mRenderTargetStack.LastElement().mTarget = aSource;
+  }
 
   // Widget associated with this compositor
   nsIWidget *mWidget;

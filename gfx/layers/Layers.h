@@ -787,8 +787,15 @@ public:
      * Disable subpixel AA for this layer. This is used if the display isn't suited
      * for subpixel AA like hidpi or rotated content.
      */
-    CONTENT_DISABLE_SUBPIXEL_AA = 0x20
+    CONTENT_DISABLE_SUBPIXEL_AA = 0x20,
+
+    /**
+     * This content has native VR -- just blit it directly across the VR surface
+     * when doing VR rendering.
+     */
+    CONTENT_NATIVE_VR = 0x40
   };
+
   /**
    * CONSTRUCTION PHASE ONLY
    * This lets layout make some promises about what will be drawn into the

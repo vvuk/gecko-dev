@@ -7,6 +7,7 @@
 
 #include "prlink.h"
 #include "prmem.h"
+#include "prenv.h"
 #include "gfxVR.h"
 #include "ovr_capi_dynamic.h"
 

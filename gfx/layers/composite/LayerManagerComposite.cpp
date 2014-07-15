@@ -485,7 +485,7 @@ LayerManagerComposite::PushGroupForLayerEffects()
       mTwoPassTmpTarget->GetOrigin() != previousTarget->GetOrigin()) {
     mTwoPassTmpTarget = mCompositor->CreateRenderTarget(rect, INIT_MODE_NONE);
   }
-  mCompositor->SetRenderTarget(mTwoPassTmpTarget);
+  mCompositor->PushRenderTarget(mTwoPassTmpTarget);
   return previousTarget;
 }
 void
@@ -501,7 +501,7 @@ LayerManagerComposite::PopGroupForLayerEffects(RefPtr<CompositingRenderTarget> a
   // method is flagged for investigation
   MOZ_ASSERT(aInvertEffect || aGrayscaleEffect || aContrastEffect != 0.0);
 
-  mCompositor->SetRenderTarget(aPreviousTarget);
+  mCompositor->PopRenderTarget();
 
   EffectChain effectChain(RootLayer());
   Matrix5x4 effectMatrix;

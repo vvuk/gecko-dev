@@ -5642,7 +5642,7 @@ nsDisplayVR::BuildLayer(nsDisplayListBuilder* aBuilder,
   ContainerLayerParameters newContainerParameters = aContainerParameters;
   uint32_t flags = FrameLayerBuilder::CONTAINER_NOT_CLIPPED_BY_ANCESTORS;
   nsRefPtr<ContainerLayer> container = aManager->GetLayerBuilder()->
-    BuildContainerLayerFor(aBuilder, aManager, mFrame, this, mList,
+    BuildContainerLayerFor(aBuilder, aManager, mFrame, this, &mList,
                            newContainerParameters, nullptr, flags);
 
   container->SetVRHMDInfo(mHMD);

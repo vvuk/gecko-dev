@@ -55,8 +55,6 @@ CompositingRenderTargetOGL::BindRenderTarget()
         NS_WARNING(msg.get());
       }
     }
-
-    mCompositor->PrepareViewport(mInitParams.mSize);
   }
 }
 
@@ -94,7 +92,9 @@ CompositingRenderTargetOGL::InitializeImpl()
 
   mInitParams.mStatus = InitParams::INITIALIZED;
 
-  mCompositor->PrepareViewport(mInitParams.mSize);
+  // XXX can we avoid this Prepare here, and clear elesewhere?
+  mCompositor->PrepareViewport(gfx::IntRect(gfx::IntPoint(0, 0), mInitParams.mSize));
+
   mGL->fScissor(0, 0, mInitParams.mSize.width, mInitParams.mSize.height);
   if (mInitParams.mInit == INIT_MODE_CLEAR) {
     mGL->fClearColor(0.0, 0.0, 0.0, 0.0);

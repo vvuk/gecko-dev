@@ -570,12 +570,12 @@ CompositorOGL::BindAndDrawQuadWithTextureRect(ShaderProgramOGL *aProg,
 }
 
 void
-CompositorOGL::PrepareViewport(const gfx::IntSize& aSize)
+CompositorOGL::PrepareViewport(const gfx::IntRect& aRect)
 {
   // Set the viewport correctly.
-  mGLContext->fViewport(0, 0, aSize.width, aSize.height);
+  mGLContext->fViewport(aRect.x, aRect.y, aRect.width, aRect.height);
 
-  mHeight = aSize.height;
+  mHeight = aRect.height;
 
   // We flip the view matrix around so that everything is right-side up; we're
   // drawing directly into the window's back buffer, so this keeps things
@@ -589,10 +589,10 @@ CompositorOGL::PrepareViewport(const gfx::IntSize& aSize)
   if (mGLContext->IsOffscreen()) {
     // In case of rendering via GL Offscreen context, disable Y-Flipping
     viewMatrix.PreTranslate(-1.0, -1.0);
-    viewMatrix.PreScale(2.0f / float(aSize.width), 2.0f / float(aSize.height));
+    viewMatrix.PreScale(2.0f / float(aRect.width), 2.0f / float(aRect.height));
   } else {
     viewMatrix.PreTranslate(-1.0, 1.0);
-    viewMatrix.PreScale(2.0f / float(aSize.width), 2.0f / float(aSize.height));
+    viewMatrix.PreScale(2.0f / float(aRect.width), 2.0f / float(aRect.height));
     viewMatrix.PreScale(1.0f, -1.0f);
   }
 
@@ -607,6 +607,61 @@ CompositorOGL::PrepareViewport(const gfx::IntSize& aSize)
   matrix3d._33 = 0.0f;
 
   mProjMatrix = matrix3d;
+
+  UpdateTopRenderTargetStackViewport(aRect);
+}
+
+#ifdef DEBUG_vladimir
+static void
+printf_rect(const char *s, const gfx::Rect& r)
+{
+  printf_stderr("%s: %.2f,%.2f %.2fx%.2f\n", s, r.x, r.y, r.width, r.height);
+}
+
+static void
+printf_rect(const char *s, const gfx::IntRect& r)
+{
+  printf_stderr("%s: %d,%d %dx%d\n", s, r.x, r.y, r.width, r.height);
+}
+
+static void
+printf_matrix(const char *s, const gfx::Matrix4x4& m)
+{
+  printf_stderr("%s:\n", s);
+  printf_stderr("[[ %10.8f %10.8f %10.8f %10.8f ]\n", m._11, m._12, m._13, m._14);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]\n", m._21, m._22, m._23, m._24);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]\n", m._31, m._32, m._33, m._34);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]]\n", m._41, m._42, m._43, m._44);
+}
+
+static void
+printf_matrix(const char *s, float* m)
+{
+  printf_stderr("%s:\n", s);
+  printf_stderr("[[ %10.8f %10.8f %10.8f %10.8f ]\n", m[0], m[1], m[2], m[3]);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]\n", m[4], m[5], m[6], m[7]);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]\n", m[8], m[9], m[10], m[11]);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]]\n", m[12], m[13], m[14], m[15]);
+}
+#endif
+
+void
+CompositorOGL::PrepareViewport3D(const gfx::IntRect& aRect,
+                                 const Matrix4x4& aProjection)
+{
+  // Set the viewport correctly.
+  mGLContext->fViewport(aRect.x, aRect.y, aRect.width, aRect.height);
+
+  mHeight = aRect.height;
+
+  mProjMatrix = aProjection;
+
+#if 0
+  printf_rect("PrepareViewport3D rect", aRect);
+  printf_matrix("PrepareViewport3D final projection", mProjMatrix);
+#endif
+
+  UpdateTopRenderTargetStackViewport(aRect, aProjection);
 }
 
 TemporaryRef<CompositingRenderTarget>
@@ -660,6 +715,59 @@ CompositorOGL::CreateRenderTargetFromSource(const IntRect &aRect,
 }
 
 void
+CompositorOGL::PushRenderTarget(CompositingRenderTarget* aRenderTarget)
+{
+  CompositingRenderTargetOGL* newRT =
+    static_cast<CompositingRenderTargetOGL*>(aRenderTarget);
+
+  // filled in by SetRenderTarget
+  mRenderTargetStack.AppendElement();
+
+  SetRenderTarget(aRenderTarget);
+  PrepareViewport(gfx::IntRect(gfx::IntPoint(0, 0), newRT->GetInitSize()));
+}
+
+void
+CompositorOGL::PushRenderTarget(CompositingRenderTarget* aRenderTarget,
+                                const gfx::IntRect& aRect,
+                                const gfx::Matrix4x4& aProjectionMatrix)
+{
+  CompositingRenderTargetOGL* newRT =
+    static_cast<CompositingRenderTargetOGL*>(aRenderTarget);
+
+  // need a new element, which will be filled in by SetRenderTarget and
+  // PrepareViewport3D
+  mRenderTargetStack.AppendElement();
+
+  SetRenderTarget(aRenderTarget);
+  PrepareViewport3D(aRect, aProjectionMatrix);
+}
+
+void
+CompositorOGL::PopRenderTarget()
+{
+  MOZ_ASSERT(mRenderTargetStack.Length() > 1);
+
+  // nuke the last element
+  mRenderTargetStack.SetLength(mRenderTargetStack.Length() - 1);
+
+  // we need a copy of this stack entry, because SetRenderTarget will
+  // internally call PrepareViewport which will screw over everything
+  // that we saved about this render target's projection etc.
+  // XXX this might be fixed.
+  RenderTargetStackEntry entry = mRenderTargetStack.LastElement();
+  CompositingRenderTargetOGL* newRT =
+    static_cast<CompositingRenderTargetOGL*>(entry.mTarget.get());
+
+  SetRenderTarget(entry.mTarget);
+  if (entry.mIs3D) {
+    PrepareViewport3D(entry.mRect, entry.mProjectionMatrix);
+  } else {
+    PrepareViewport(entry.mRect);
+  }
+}
+
+void
 CompositorOGL::SetRenderTarget(CompositingRenderTarget *aSurface)
 {
   MOZ_ASSERT(aSurface);
@@ -668,6 +776,7 @@ CompositorOGL::SetRenderTarget(CompositingRenderTarget *aSurface)
   if (mCurrentRenderTarget != surface) {
     mCurrentRenderTarget = surface;
     surface->BindRenderTarget();
+    mRenderTargetStack.LastElement().mTarget = aSurface;
   }
 }
 
@@ -767,12 +876,22 @@ CompositorOGL::BeginFrame(const nsIntRegion& aInvalidRegion,
   TexturePoolOGL::Fill(gl());
 #endif
 
-  mCurrentRenderTarget =
+  // Make sure the render offset is respected. We ignore this when we have a
+  // target to stop tests failing - this is only used by the Android browser
+  // UI for its dynamic toolbar.
+  IntPoint origin;
+  if (!mTarget) {
+    origin.x = -mRenderOffset.x;
+    origin.y = -mRenderOffset.y;
+  }
+
+  RefPtr<CompositingRenderTargetOGL> windowTarget =
     CompositingRenderTargetOGL::RenderTargetForWindow(this,
                                                       IntSize(width, height));
-  mCurrentRenderTarget->BindRenderTarget();
+  PushRenderTarget(windowTarget);
+
 #ifdef DEBUG
-  mWindowRenderTarget = mCurrentRenderTarget;
+  mWindowRenderTarget = windowTarget;
 #endif
 
   // Default blend function implements "OVER"
@@ -1040,8 +1159,27 @@ CompositorOGL::DrawQuad(const Rect& aRect,
   if (!mTarget && mCurrentRenderTarget->IsWindow()) {
     clipRect.MoveBy(mRenderOffset.x, mRenderOffset.y);
   }
+
+#if 0
+  {
+    printf_stderr("DrawQuad: r: %f,%f,%f,%f cr: %f,%f,%f,%f target: %p mro: %d,%d\n",
+                  aRect.x, aRect.y, aRect.width, aRect.height,
+                  clipRect.x, clipRect.y, clipRect.width, clipRect.height,
+                  mTarget.get(),
+                  mRenderOffset.x, mRenderOffset.y);
+  }
+#endif
+
   IntRect intClipRect;
   clipRect.ToIntRect(&intClipRect);
+
+  // XXX add the current viewport's origin to the clip rect, because the clip is going
+  // to be in the wrong coordinate space otherwise.
+  // XXX how is this ever correct otherwise?  Do we ever set a non-0,0 viewport?
+  // XXX we never set a non-0,0 viewport.  The only things that set a viewport are in
+  // this file, or the PrepareViewport3D for VR in ContainerLayerComposite.
+  intClipRect.MoveBy(mRenderTargetStack.LastElement().mRect.x,
+                     mRenderTargetStack.LastElement().mRect.y);
 
   gl()->fScissor(intClipRect.x, FlipY(intClipRect.y + intClipRect.height),
                  intClipRect.width, intClipRect.height);
@@ -1139,6 +1277,13 @@ CompositorOGL::DrawQuad(const Rect& aRect,
     // This is used by IOSurface that use 0,0...w,h coordinate rather then 0,0..1,1.
     program->SetTexCoordMultiplier(source->GetSize().width, source->GetSize().height);
   }
+
+#if 0
+  printf_stderr("DrawQuad: rect: [%f %f %f %f] origin: [%d %d]\n", aRect.x, aRect.y, aRect.width, aRect.height, offset.x, offset.y);
+  printf_matrix("layerTransform", aTransform);
+  printf_matrix("projection", mProjMatrix);
+  printf_stderr("----\n");
+#endif
 
   bool didSetBlendMode = false;
 
@@ -1363,6 +1508,7 @@ CompositorOGL::EndFrame()
   }
 
   mCurrentRenderTarget = nullptr;
+  mRenderTargetStack.Clear();
 
   if (mTexturePool) {
     mTexturePool->EndFrame();
@@ -1455,6 +1601,7 @@ CompositorOGL::AbortFrame()
   mGLContext->fBindBuffer(LOCAL_GL_ARRAY_BUFFER, 0);
   mFrameInProgress = false;
   mCurrentRenderTarget = nullptr;
+  mRenderTargetStack.Clear();
 
   if (mTexturePool) {
     mTexturePool->EndFrame();
