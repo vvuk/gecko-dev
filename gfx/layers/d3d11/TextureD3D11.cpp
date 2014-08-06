@@ -558,7 +558,16 @@ DataTextureSourceD3D11::Update(DataSourceSurface* aSurface,
 
         void* data = map.mData + map.mStride * iterRect->y + BytesPerPixel(aSurface->GetFormat()) * iterRect->x;
 
-        mCompositor->GetDC()->UpdateSubresource(mTexture, 0, &box, data, map.mStride, map.mStride * mSize.height);
+        // The D3D debug layer really wants an *extremely precise* depth pitch, even though we don't
+        // use depth slices at all.  I think it actually has a bug, but whatever.
+        uint32_t totalDataSize;
+        if (iterRect->height > 1) {
+            totalDataSize = (map.mStride * (iterRect->height - 1)) + BytesPerPixel(aSurface->GetFormat()) * iterRect->width;
+        } else {
+            totalDataSize = BytesPerPixel(aSurface->GetFormat()) * iterRect->width;
+        }
+
+        mCompositor->GetDC()->UpdateSubresource(mTexture, 0, &box, data, map.mStride, totalDataSize);
       }
     } else {
       mCompositor->GetDC()->UpdateSubresource(mTexture, 0, nullptr, aSurface->GetData(),
