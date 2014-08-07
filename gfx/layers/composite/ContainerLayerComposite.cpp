@@ -563,6 +563,10 @@ CreateTemporaryTarget(ContainerT* aContainer,
 {
   Compositor* compositor = aManager->GetCompositor();
   nsIntRect visibleRect = aContainer->GetEffectiveVisibleRegion().GetBounds();
+  if (visibleRect.IsEmpty()) {
+    return nullptr;
+  }
+
   SurfaceInitMode mode = INIT_MODE_CLEAR;
   gfx::IntRect surfaceRect = gfx::IntRect(visibleRect.x, visibleRect.y,
                                           visibleRect.width, visibleRect.height);
