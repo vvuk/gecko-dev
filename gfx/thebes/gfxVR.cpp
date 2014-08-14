@@ -245,8 +245,21 @@ HMDInfoOculus::HMDInfoOculus(ovrHmd aHMD)
 
   nsCOMPtr<nsIScreenManager> screenmgr = do_GetService("@mozilla.org/gfx/screenmanager;1");
   if (screenmgr) {
-    screenmgr->ScreenForRect(desc.WindowsPos.x, desc.WindowsPos.y,
-                             desc.Resolution.w, desc.Resolution.h,
+    int32_t wx = mHMD->WindowsPos.x;
+    int32_t wy = mHMD->WindowsPos.y;
+
+#ifdef DEBUG_vladimir
+    if (PR_GetEnv("VLAD_FAKE_RIFT_X_COORD")) {
+      // allow me to specify the position of the rift, for debugging on an external display
+      nsCString riftCoord(PR_GetEnv("VLAD_FAKE_RIFT_X_COORD"));
+      nsresult err;
+      wx = riftCoord.ToInteger(&err);
+      wy = 0;
+    }
+#endif
+
+    screenmgr->ScreenForRect(wx, wy,
+                             mHMD->Resolution.w, mHMD->Resolution.h,
                              getter_AddRefs(mScreen));
   }
 }
