@@ -267,6 +267,9 @@ ContainerRenderVR(ContainerT* aContainer,
     gfx::IntRect eyeRect(eye * eyeWidth, 0, eyeWidth, surfaceRect.height);
     gfx::Matrix4x4 eyeProjection = aHMD->GetEyeProjectionMatrix(eye);
 
+    // flip Y axis to match what CSS expects
+    eyeProjection._22 = -eyeProjection._22;
+
     compositor->PrepareViewport3D(eyeRect, eyeProjection);
 
     gfx::Matrix4x4 eyeTransform = gfx::Matrix4x4::Translation(eyeTranslation) * origTransform;
