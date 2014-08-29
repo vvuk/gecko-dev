@@ -170,6 +170,18 @@ struct PreparedLayer
   nsIntRegion mSavedVisibleRegion;
 };
 
+#if 0
+static void
+printf_matrix(const char *s, const gfx::Matrix4x4& m)
+{
+  printf_stderr("%s:\n", s);
+  printf_stderr("[[ %10.8f %10.8f %10.8f %10.8f ]\n", m._11, m._12, m._13, m._14);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]\n", m._21, m._22, m._23, m._24);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]\n", m._31, m._32, m._33, m._34);
+  printf_stderr(" [ %10.8f %10.8f %10.8f %10.8f ]]\n", m._41, m._42, m._43, m._44);
+}
+#endif
+
 template<class ContainerT> void
 ContainerRenderVR(ContainerT* aContainer,
                   LayerManagerComposite* aManager,
@@ -271,6 +283,11 @@ ContainerRenderVR(ContainerT* aContainer,
     eyeProjection._22 = -eyeProjection._22;
 
     compositor->PrepareViewport3D(eyeRect, eyeProjection);
+
+    // XXX scale up eye translation for increased stereo effect
+    // we need to work on units here.
+    // We negate this because we're premultiplying it with the transform
+    eyeTranslation *= -1000.0;
 
     gfx::Matrix4x4 eyeTransform = gfx::Matrix4x4::Translation(eyeTranslation) * origTransform;
 
