@@ -27,7 +27,7 @@ namespace mozilla {
 namespace dom {
 
 #define PREFERENCE_DEFAULT_RECOGNITION_SERVICE "media.webspeech.service.default"
-#define DEFAULT_RECOGNITION_SERVICE "google"
+#define DEFAULT_RECOGNITION_SERVICE "pocketsphinx"
 
 #define PREFERENCE_ENDPOINTER_SILENCE_LENGTH "media.webspeech.silence_length"
 #define PREFERENCE_ENDPOINTER_LONG_SILENCE_LENGTH "media.webspeech.long_silence_length"
@@ -459,7 +459,14 @@ SpeechRecognition::WaitForSpeechEnd(SpeechEvent* aEvent)
     if (mCurrentState == STATE_RECOGNIZING) {
       // FIXME: StopRecordingAndRecognize should only be called for single
       // shot services for continuous we should just inform the service
-      StopRecordingAndRecognize(aEvent);
+      if (!mIsContinuous)
+      {
+        StopRecordingAndRecognize(aEvent);
+      }
+      else
+      {
+        mRecognitionService->DecodeInterim();
+      }
     }
   }
 }
@@ -483,6 +490,7 @@ SpeechRecognition::NotifyFinalResult(SpeechEvent* aEvent)
 
   bool defaultActionEnabled;
   this->DispatchEvent(event, &defaultActionEnabled);
+
 }
 
 void
@@ -530,13 +538,22 @@ SpeechRecognition::StartRecording(DOMMediaStream* aDOMStream)
 {
   // hold a reference so that the underlying stream
   // doesn't get Destroy()'ed
+  printf("SpeechRecognition::StartRecording(DOMMediaStream* aDOMStream)");
   mDOMStream = aDOMStream;
 
   NS_ENSURE_STATE(mDOMStream->GetStream());
+
+  printf("Ensure STATE ok");
+
+
   mSpeechListener = new SpeechStreamListener(this);
   mDOMStream->GetStream()->AddListener(mSpeechListener);
+  printf("GetStream ok");
 
   mEndpointer.StartSession();
+
+
+  printf("StartSession ok");
 
   return mSpeechDetectionTimer->Init(this, kSPEECH_DETECTION_TIMEOUT_MS,
                                      nsITimer::TYPE_ONE_SHOT);
@@ -549,9 +566,12 @@ SpeechRecognition::StopRecording()
   // as our JS code still holds a reference to mDOMStream and only assigning
   // it to nullptr isn't guaranteed to free the stream and the listener.
   mDOMStream->GetStream()->RemoveListener(mSpeechListener);
-  mSpeechListener = nullptr;
-  mDOMStream = nullptr;
 
+  if (!mIsContinuous)
+  {
+    mSpeechListener = nullptr;    
+    mDOMStream = nullptr;
+  }
   mEndpointer.EndSession();
   DispatchTrustedEvent(NS_LITERAL_STRING("audioend"));
 
@@ -633,14 +653,15 @@ SpeechRecognition::SetLang(const nsAString& aArg, ErrorResult& aRv)
 bool
 SpeechRecognition::GetContinuous(ErrorResult& aRv) const
 {
-  aRv.Throw(NS_ERROR_NOT_IMPLEMENTED);
-  return false;
+  printf("GetContinuous \n");
+  return mIsContinuous;
 }
 
 void
 SpeechRecognition::SetContinuous(bool aArg, ErrorResult& aRv)
 {
-  aRv.Throw(NS_ERROR_NOT_IMPLEMENTED);
+  printf("SetContinuous \n");
+  mIsContinuous = aArg;
   return;
 }
 
@@ -934,10 +955,25 @@ NS_IMPL_ISUPPORTS(SpeechRecognition::GetUserMediaSuccessCallback, nsIDOMGetUserM
 NS_IMETHODIMP
 SpeechRecognition::GetUserMediaSuccessCallback::OnSuccess(nsISupports* aStream)
 {
+  printf("SpeechRecognition::GetUserMediaSuccessCallback::OnSuccess(nsISupports* aStream)");
+
+  if (aStream == nullptr)
+  {
+    printf( "(aStream == nullptr)" );
+  }
+  else
+  {
+    printf( "(aStream != nullptr)" );
+  }
+  
   DOMLocalMediaStream *localStream = nullptr;
+ 
   nsresult rv = CallQueryInterface(aStream, &localStream);
+ 
   if (NS_SUCCEEDED(rv)) {
-    mRecognition->StartRecording(localStream);
+    printf("INSIDE NS_SUCCEEDED");
+   mRecognition->StartRecording(localStream);
+
   }
   return NS_OK;
 }

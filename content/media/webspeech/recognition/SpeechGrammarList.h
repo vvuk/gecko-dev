@@ -52,10 +52,14 @@ public:
 
   nsCOMPtr<nsISpeechRecognitionService> mRecognitionService;
 
+  const char * mGram;
+
 private:
   ~SpeechGrammarList();
 
   nsCOMPtr<nsISupports> mParent;
+
+  nsTArray<nsRefPtr<SpeechGrammar>> mItems;
 };
 
 } // namespace dom

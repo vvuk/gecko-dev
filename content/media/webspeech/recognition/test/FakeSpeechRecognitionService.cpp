@@ -52,13 +52,19 @@ FakeSpeechRecognitionService::SoundEnd()
 }
 
 NS_IMETHODIMP
-FakeSpeechRecognitionService::ValidateAndSetGrammarList(mozilla::dom::SpeechGrammarList*, nsISpeechGrammarCompilationCallback*)
+FakeSpeechRecognitionService::ValidateAndSetGrammarList(mozilla::dom::SpeechGrammar*, nsISpeechGrammarCompilationCallback*)
 {
   return NS_OK;
 }
 
 NS_IMETHODIMP
 FakeSpeechRecognitionService::Abort()
+{
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+FakeSpeechRecognitionService::DecodeInterim()
 {
   return NS_OK;
 }

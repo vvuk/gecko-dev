@@ -1754,3 +1754,10 @@ pref("experiments.supported", true);
 pref("media.gmp-gmpopenh264.provider.enabled", true);
 
 pref("browser.apps.URL", "https://marketplace.firefox.com/discovery/");
+
+// Enable Web Speech recognition API
+pref("media.webspeech.recognition.enable", true);
+pref("media.webspeech.service.default", "pocketsphinx");
+
+
+

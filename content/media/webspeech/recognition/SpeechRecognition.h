@@ -86,6 +86,8 @@ public:
 
   void SetContinuous(bool aArg, ErrorResult& aRv);
 
+  bool mIsContinuous;
+
   bool GetInterimResults(ErrorResult& aRv) const;
 
   void SetInterimResults(bool aArg, ErrorResult& aRv);
@@ -224,6 +226,7 @@ private:
   void WaitForAudioData(SpeechEvent* aEvent);
   void StartedAudioCapture(SpeechEvent* aEvent);
   void StopRecordingAndRecognize(SpeechEvent* aEvent);
+  void KeepRecordingAndRecognize(SpeechEvent* aEvent);  
   void WaitForEstimation(SpeechEvent* aEvent);
   void DetectSpeech(SpeechEvent* aEvent);
   void WaitForSpeechEnd(SpeechEvent* aEvent);

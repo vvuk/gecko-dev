@@ -541,7 +541,7 @@ HMDInfoOculus::DetachFromWidget(nsIWidget* aWidget)
 #endif
 }
 
-static nsTArray<RefPtr<HMDInfoOculus> > sOculusHMDs;
+static nsTArray<mozilla::RefPtr<HMDInfoOculus> > sOculusHMDs;
 
 bool
 VRHMDManagerOculus::PlatformInit()

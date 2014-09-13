@@ -116,7 +116,10 @@ if CONFIG['MOZ_B2G_BT']:
 
 if CONFIG['MOZ_WEBSPEECH']:
     LOCAL_INCLUDES += [
+        '/content/media/webspeech/recognition',
         '/content/media/webspeech/synth',
+        '/media/pocketsphinx',
+        '/media/sphinxbase',
     ]
 
 if CONFIG['MOZ_GSTREAMER']:

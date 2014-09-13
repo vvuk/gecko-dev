@@ -11,6 +11,11 @@
 #include "nsCycleCollectionParticipant.h"
 #include "nsString.h"
 #include "nsWrapperCache.h"
+
+#include "nsISpeechRecognitionService.h"
+
+struct JSContext;
+
 #include "js/TypeDecls.h"
 
 #include "mozilla/Attributes.h"
@@ -49,6 +54,8 @@ private:
   ~SpeechGrammar();
 
   nsCOMPtr<nsISupports> mParent;
+
+  char * mGram;
 };
 
 } // namespace dom

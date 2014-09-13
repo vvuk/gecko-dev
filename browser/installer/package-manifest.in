@@ -170,6 +170,7 @@
 @BINPATH@/run-mozilla.sh
 #endif
 #endif
+@BINPATH@/models/
 
 ; [Components]
 @BINPATH@/browser/components/components.manifest

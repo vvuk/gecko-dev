@@ -1,0 +1,14 @@
+MODELSPS_KEEP_PATH := 1
+
+MODELSPS_FILES := dict/cmu07a.dic \
+		en-us-semi/feat.params \
+		en-us-semi/mdef \
+		en-us-semi/means \
+		en-us-semi/noisedict \
+		en-us-semi/sendump \
+		en-us-semi/transition_matrices \
+		en-us-semi/variances 
+		
+MODELSPS_DEST := $(DIST)/bin/models
+INSTALL_TARGETS += MODELSPS
+
