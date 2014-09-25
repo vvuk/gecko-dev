@@ -13,6 +13,7 @@
 
 #include "nsServiceManagerUtils.h"
 #include "nsIScreenManager.h"
+#include "nsIWidget.h"
 
 #ifdef XP_WIN
 #include "gfxWindowsPlatform.h" // for gfxWindowsPlatform::GetDPIScale
@@ -172,6 +173,58 @@ static bool InitializeOculusCAPI()
 
 using namespace mozilla::gfx;
 
+
+// Dummy nsIScreen implementation, for when we just need to specify a size
+class FakeScreen : public nsIScreen
+{
+public:
+  FakeScreen(const IntRect& aScreenRect)
+    : mScreenRect(aScreenRect)
+  { }
+
+  NS_DECL_ISUPPORTS
+
+  NS_IMETHOD GetRect(int32_t *l, int32_t *t, int32_t *w, int32_t *h) {
+    *l = mScreenRect.x;
+    *t = mScreenRect.y;
+    *w = mScreenRect.width;
+    *h = mScreenRect.height;
+    return NS_OK;
+  }
+  NS_IMETHOD GetAvailRect(int32_t *l, int32_t *t, int32_t *w, int32_t *h) {
+    return GetRect(l, t, w, h);
+  }
+  NS_IMETHOD GetRectDisplayPix(int32_t *l, int32_t *t, int32_t *w, int32_t *h) {
+    return GetRect(l, t, w, h);
+  }
+  NS_IMETHOD GetAvailRectDisplayPix(int32_t *l, int32_t *t, int32_t *w, int32_t *h) {
+    return GetAvailRect(l, t, w, h);
+  }
+
+  NS_IMETHOD GetId(uint32_t* aId) { *aId = (uint32_t)-1; return NS_OK; }
+  NS_IMETHOD GetPixelDepth(int32_t* aPixelDepth) { *aPixelDepth = 24; return NS_OK; }
+  NS_IMETHOD GetColorDepth(int32_t* aColorDepth) { *aColorDepth = 24; return NS_OK; }
+
+  NS_IMETHOD LockMinimumBrightness(uint32_t aBrightness) { return NS_ERROR_NOT_AVAILABLE; }
+  NS_IMETHOD UnlockMinimumBrightness(uint32_t aBrightness) { return NS_ERROR_NOT_AVAILABLE; }
+  NS_IMETHOD GetRotation(uint32_t* aRotation) {
+    *aRotation = nsIScreen::ROTATION_0_DEG;
+    return NS_OK;
+  }
+  NS_IMETHOD SetRotation(uint32_t aRotation) { return NS_ERROR_NOT_AVAILABLE; }
+  NS_IMETHOD GetContentsScaleFactor(double* aContentsScaleFactor) {
+    *aContentsScaleFactor = 1.0;
+    return NS_OK;
+  }
+
+protected:
+  virtual ~FakeScreen() {}
+
+  IntRect mScreenRect;
+};
+
+NS_IMPL_ISUPPORTS(FakeScreen, nsIScreen)
+
 static bool sOculusInitialized = false;
 
 class HMDInfoOculus : public VRHMDInfo {
@@ -191,6 +244,9 @@ public:
                                const IntSize& textureSize, const IntRect& eyeViewport,
                                const Size& destViewport, const Rect& destRect,
                                VRDistortionConstants& values) MOZ_OVERRIDE;
+
+  void AttachToWidget(nsIWidget* aWidget) MOZ_OVERRIDE;
+  void DetachFromWidget(nsIWidget* aWidget) MOZ_OVERRIDE;
 
 protected:
   virtual ~HMDInfoOculus() { Destroy(); }
@@ -243,24 +299,30 @@ HMDInfoOculus::HMDInfoOculus(ovrHmd aHMD)
 
   SetFOV(mRecommendedEyeFOV[Eye_Left], mRecommendedEyeFOV[Eye_Right], 0.01, 10000.0);
 
-  nsCOMPtr<nsIScreenManager> screenmgr = do_GetService("@mozilla.org/gfx/screenmanager;1");
-  if (screenmgr) {
-    int32_t wx = mHMD->WindowsPos.x;
-    int32_t wy = mHMD->WindowsPos.y;
+  if (!(mHMD->HmdCaps & ovrHmdCap_ExtendDesktop)) {
+    // in direct mode (not extended desktop)
+    mScreen = new FakeScreen(IntRect(0, 0, mHMD->Resolution.w, mHMD->Resolution.h));
+  } else {
+    // extended desktop mode
+    nsCOMPtr<nsIScreenManager> screenmgr = do_GetService("@mozilla.org/gfx/screenmanager;1");
+    if (screenmgr) {
+      int32_t wx = mHMD->WindowsPos.x;
+      int32_t wy = mHMD->WindowsPos.y;
 
 #ifdef DEBUG_vladimir
-    if (PR_GetEnv("VLAD_FAKE_RIFT_X_COORD")) {
-      // allow me to specify the position of the rift, for debugging on an external display
-      nsCString riftCoord(PR_GetEnv("VLAD_FAKE_RIFT_X_COORD"));
-      nsresult err;
-      wx = riftCoord.ToInteger(&err);
-      wy = 0;
-    }
+      if (PR_GetEnv("VLAD_FAKE_RIFT_X_COORD")) {
+        // allow me to specify the position of the rift, for debugging on an external display
+        nsCString riftCoord(PR_GetEnv("VLAD_FAKE_RIFT_X_COORD"));
+        nsresult err;
+        wx = riftCoord.ToInteger(&err);
+        wy = 0;
+      }
 #endif
 
-    screenmgr->ScreenForRect(wx, wy,
-                             mHMD->Resolution.w, mHMD->Resolution.h,
-                             getter_AddRefs(mScreen));
+      screenmgr->ScreenForRect(wx, wy,
+                               mHMD->Resolution.w, mHMD->Resolution.h,
+                               getter_AddRefs(mScreen));
+    }
   }
 }
 
@@ -459,7 +521,26 @@ HMDInfoOculus::GetSensorState(double timeOffset)
   return result;
 }
 
-static nsTArray<nsRefPtr<HMDInfoOculus> > sOculusHMDs;
+void
+HMDInfoOculus::AttachToWidget(nsIWidget* aWidget)
+{
+#ifdef XP_WIN
+  if (!(mHMD->HmdCaps & ovrHmdCap_ExtendDesktop)) {
+    HWND wnd = (HWND) aWidget->GetNativeData(NS_NATIVE_WIDGET);
+    ovrHmd_AttachToWindow(mHMD, wnd, nullptr, nullptr);
+  }
+#endif
+}
+
+void
+HMDInfoOculus::DetachFromWidget(nsIWidget* aWidget)
+{
+#ifdef XP_WIN
+  ovrHmd_AttachToWindow(mHMD, nullptr, nullptr, nullptr);
+#endif
+}
+
+static nsTArray<RefPtr<HMDInfoOculus> > sOculusHMDs;
 
 bool
 VRHMDManagerOculus::Init()

@@ -5983,8 +5983,13 @@ nsGlobalWindow::SetFullScreenInternal(bool aFullScreen, bool aRequireTrust, gfx:
     nsCOMPtr<nsIWidget> widget = GetMainWidget();
     if (widget) {
       nsCOMPtr<nsIScreen> screen;
-      if (aHMD) {
+      if (aFullScreen && aHMD) {
         screen = aHMD->GetScreen();
+        aHMD->AttachToWidget(widget);
+        mVRHMDInfo = aHMD;
+      } else if (!aFullScreen && mVRHMDInfo) {
+        mVRHMDInfo->DetachFromWidget(widget);
+        mVRHMDInfo = nullptr;
       }
       widget->MakeFullScreen(aFullScreen, screen);
     }

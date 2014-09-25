@@ -14,6 +14,8 @@
 #include "mozilla/gfx/2D.h"
 #include "mozilla/EnumeratedArray.h"
 
+class nsIWidget;
+
 namespace mozilla {
 namespace gfx {
 
@@ -180,6 +182,9 @@ public:
 
   // The nsIScreen that represents this device
   virtual nsIScreen* GetScreen() { return mScreen; }
+
+  virtual void AttachToWidget(nsIWidget* aWidget) { }
+  virtual void DetachFromWidget(nsIWidget* aWidget) { }
 
 protected:
   VRHMDInfo(VRHMDType aType) : mType(aType) {}
