@@ -226,6 +226,7 @@ protected:
 NS_IMPL_ISUPPORTS(FakeScreen, nsIScreen)
 
 static bool sOculusInitialized = false;
+static bool sOculusPlatformInitialized = false;
 
 class HMDInfoOculus : public VRHMDInfo {
   friend class VRHMDManagerOculus;
@@ -543,15 +544,32 @@ HMDInfoOculus::DetachFromWidget(nsIWidget* aWidget)
 static nsTArray<RefPtr<HMDInfoOculus> > sOculusHMDs;
 
 bool
-VRHMDManagerOculus::Init()
+VRHMDManagerOculus::PlatformInit()
 {
-  if (sOculusInitialized)
+  if (sOculusPlatformInitialized)
     return true;
 
   if (!InitializeOculusCAPI())
     return false;
 
-  ovr_Initialize();
+  bool ok = ovr_Initialize();
+
+  if (!ok)
+    return false;
+
+  sOculusPlatformInitialized = true;
+  return true;
+}
+
+bool
+VRHMDManagerOculus::Init()
+{
+  if (sOculusInitialized)
+    return true;
+
+  if (!PlatformInit())
+    return false;
+
   int count = ovrHmd_Detect();
 
   for (int i = 0; i < count; ++i) {

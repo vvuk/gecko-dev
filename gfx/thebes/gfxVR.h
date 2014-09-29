@@ -208,6 +208,7 @@ protected:
 
 class VRHMDManagerOculus {
 public:
+  static bool PlatformInit();
   static bool Init();
   static void Destroy();
   static void GetOculusHMDs(nsTArray<nsRefPtr<VRHMDInfo> >& aHMDResult);

@@ -69,6 +69,8 @@
 #include "SurfaceCache.h"
 #include "gfxPrefs.h"
 
+#include "gfxVR.h"
+
 using namespace mozilla;
 using namespace mozilla::gfx;
 using namespace mozilla::layers;
@@ -312,6 +314,10 @@ gfxWindowsPlatform::gfxWindowsPlatform()
     RegisterStrongMemoryReporter(new GfxD2DVramReporter());
 
     UpdateRenderMode();
+
+    // give ovr_Initialize a chance to be called very early on; we don't
+    // care if it succeeds or not
+    VRHMDManagerOculus::PlatformInit();
 
     if (gfxPrefs::Direct2DUse1_1()) {
       InitD3D11Devices();
