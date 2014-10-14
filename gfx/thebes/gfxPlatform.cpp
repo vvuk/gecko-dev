@@ -898,6 +898,9 @@ mozilla::gl::SkiaGLGlue*
 gfxPlatform::GetSkiaGLGlue()
 {
 #ifdef USE_SKIA_GPU
+  if (!UseAcceleratedSkiaCanvas())
+    return nullptr;
+
   if (!mSkiaGlue) {
     /* Dummy context. We always draw into a FBO.
      *
