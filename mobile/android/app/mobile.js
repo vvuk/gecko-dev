@@ -877,3 +877,6 @@ pref("selectioncaret.detects.longtap", false);
 #ifdef NIGHTLY_BUILD
 pref("dom.serviceWorkers.enabled", true);
 #endif
+
+// Enable Cardboard VR on mobile, assuming VR at all is enabled
+pref("dom.vr.cardboard.enabled", true);
