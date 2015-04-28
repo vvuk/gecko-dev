@@ -692,6 +692,33 @@ Layer::CalculateScissorRect(const RenderTargetIntRect& aCurrentScissorRect)
     currentClip = aCurrentScissorRect;
   }
 
+#ifdef MOZ_HORIZON
+  if (gfxPrefs::VREnabled()) {
+    return currentClip;
+  }
+#if 0
+  // XXX this isn't correct for VR; we need to unscissor child layers too,
+  // not just those that are preserve-3d.
+  // The problem is that we're using "scissor" to mean "clip" which isn't
+  // correct when we're dealing with real 3D scenes.
+  bool hasUnbroken3DChainToVRContainer = false;
+  if (GetContentFlags() & CONTENT_PRESERVE_3D) {
+    for (ContainerLayer *p = container; p; p = p->mParent) {
+      if (p->GetVRHMDInfo() != nullptr) {
+        hasUnbroken3DChainToVRContainer = true;
+        break;
+      }
+      if (!(p->GetContentFlags() & CONTENT_PRESERVE_3D))
+        break;
+    }
+  }
+  
+  if (hasUnbroken3DChainToVRContainer) {
+    return currentClip;
+  }
+#endif
+#endif
+
   if (!GetEffectiveClipRect()) {
     return currentClip;
   }
