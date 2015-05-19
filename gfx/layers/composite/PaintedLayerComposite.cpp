@@ -124,6 +124,21 @@ PaintedLayerComposite::RenderLayer(const gfx::IntRect& aClipRect)
   }
 #endif
 
+  if (gfxUtils::sDumpDebug) {
+    nsIntRect bounds = visibleRegion.GetBounds();
+    const gfx::Matrix4x4& xform = GetEffectiveTransform();
+    printf_stderr("PaintedLayer[%p]: visible: [%d %d %d %d] clip: [%.2f %.2f %.2f %.2f]\n",
+                  this, bounds.X(), bounds.Y(), bounds.Width(), bounds.Height(),
+                  aClipRect.X(), aClipRect.Y(), aClipRect.Width(), aClipRect.Height());
+    if (xform.IsTranslation()) {
+      printf_stderr("                  xform: [translate %.2f %.2f %.2f]\n", xform._41, xform._42, xform._43);
+    } else {
+      printf_stderr("   xform: [%3.2f %3.2f %3.2f %3.2f]\n", xform._11, xform._12, xform._13, xform._14);
+      printf_stderr("          [%3.2f %3.2f %3.2f %3.2f]\n", xform._21, xform._22, xform._23, xform._24);
+      printf_stderr("          [%3.2f %3.2f %3.2f %3.2f]\n", xform._31, xform._32, xform._33, xform._34);
+      printf_stderr("          [%3.2f %3.2f %3.2f %3.2f]\n", xform._41, xform._42, xform._43, xform._44);
+    }
+  }
 
   RenderWithAllMasks(this, compositor, aClipRect,
                      [&](EffectChain& effectChain, const Rect& clipRect) {
