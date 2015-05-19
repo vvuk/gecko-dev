@@ -1458,6 +1458,8 @@ bool gfxUtils::sDumpPainting = false;
 bool gfxUtils::sDumpPaintingToFile = false;
 #endif
 
+bool gfxUtils::sDumpDebug = getenv("MOZ_GFX_DUMP_DEBUG") != 0;
+
 namespace mozilla {
 namespace gfx {
 

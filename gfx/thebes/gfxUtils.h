@@ -295,6 +295,8 @@ public:
     static bool sDumpPainting;
     static bool sDumpPaintingToFile;
     static FILE* sDumpPaintFile;
+
+    static bool sDumpDebug;
 };
 
 namespace mozilla {
