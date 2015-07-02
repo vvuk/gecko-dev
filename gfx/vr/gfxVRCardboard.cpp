@@ -297,8 +297,13 @@ HMDInfoCardboard::FillDistortionConstants(uint32_t whichEye,
   // these modify the texture coordinates; texcoord * zw + xy
   values.eyeToSourceScaleAndOffset[0] = 0.0;
   values.eyeToSourceScaleAndOffset[1] = 0.0;
-  values.eyeToSourceScaleAndOffset[2] = 1.0;
-  values.eyeToSourceScaleAndOffset[3] = 1.0;
+  if (PR_GetEnv("FAKE_CARDBOARD_SCREEN")) {
+    values.eyeToSourceScaleAndOffset[2] = 2.0;
+    values.eyeToSourceScaleAndOffset[3] = 2.0;
+  } else {
+    values.eyeToSourceScaleAndOffset[2] = 1.0;
+    values.eyeToSourceScaleAndOffset[3] = 1.0;
+  }
 
   // Our mesh positions are in the [-1..1] clip space; we give appropriate offset
   // and scaling for the right viewport.  (In the 0..2 space for sanity)
