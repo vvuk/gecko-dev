@@ -98,8 +98,8 @@ HMDInfoCardboard::HMDInfoCardboard()
 
 #if 1
   int32_t xcoord = 0;
-  if (getenv("FAKE_CARDBOARD_SCREEN")) {
-      const char *env = getenv("FAKE_CARDBOARD_SCREEN");
+  if (PR_GetEnv("FAKE_CARDBOARD_SCREEN")) {
+      const char *env = PR_GetEnv("FAKE_CARDBOARD_SCREEN");
       nsresult err;
       xcoord = nsCString(env).ToInteger(&err);
       if (err != NS_OK) xcoord = 0;
@@ -273,6 +273,12 @@ HMDInfoCardboard::SetFOV(const VRFieldOfView& aFOVLeft,
   // XXX find out the default screen size and use that
   mEyeResolution.width = 1920 / 2;
   mEyeResolution.height = 1080;
+
+  if (PR_GetEnv("FAKE_CARDBOARD_SCREEN")) {
+    // for testing, make the eye resolution 2x of the screen
+    mEyeResolution.width *= 2;
+    mEyeResolution.height *= 2;
+  }
 
   mConfiguration.hmdType = mType;
   mConfiguration.value = 0;
