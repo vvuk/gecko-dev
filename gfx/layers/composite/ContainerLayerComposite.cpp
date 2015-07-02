@@ -41,7 +41,7 @@
 #define CULLING_LOG(...)
 // #define CULLING_LOG(...) printf_stderr("CULLING: " __VA_ARGS__)
 
-#define DUMP(...) do { if (0) { printf_stderr(__VA_ARGS__); } } while(0)
+#define DUMP(...) do { if (getenv("DUMP_DEBUG")) { printf_stderr(__VA_ARGS__); } } while(0)
 #define XYWH(k)  (k).x, (k).y, (k).width, (k).height
 #define XY(k)    (k).x, (k).y
 #define WH(k)    (k).width, (k).height
@@ -229,7 +229,7 @@ ContainerRenderVR(ContainerT* aContainer,
       } else {
         layerBounds = layer->GetEffectiveVisibleRegion().GetBounds();
       }
-      DUMP("  layer %p bounds [%d %d %d %d] surfaceRect [%d %d %d %d]\n", layer,
+      DUMP("  layer %p [type %d] bounds [%d %d %d %d] surfaceRect [%d %d %d %d]\n", layer, (int) layer->GetType(),
            XYWH(layerBounds), XYWH(surfaceRect));
       
       const gfx::Matrix4x4 childTransform = layer->GetEffectiveTransform();
