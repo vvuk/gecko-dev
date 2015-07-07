@@ -16,6 +16,7 @@ UNIFIED_SOURCES += [
     'gfxVR.cpp',
     'gfxVRCardboard.cpp',
     'gfxVROculus.cpp',
+    'gfxVROpenVR.cpp'
 ]
 
 SOURCES += [

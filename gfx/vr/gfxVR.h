@@ -28,6 +28,7 @@ enum class VRHMDType : uint16_t {
   Oculus,
   Cardboard,
   Oculus050,
+  OpenVR,
   NumHMDTypes
 };
 
@@ -45,6 +46,14 @@ struct VRFieldOfView {
   VRFieldOfView(double up, double right, double down, double left)
     : upDegrees(up), rightDegrees(right), downDegrees(down), leftDegrees(left)
   {}
+
+  void SetFromTanRadians(double up, double right, double down, double left)
+  {
+    upDegrees = atan(up) * 180.0 / M_PI;
+    rightDegrees = atan(right) * 180.0 / M_PI;
+    downDegrees = atan(down) * 180.0 / M_PI;
+    leftDegrees = atan(left) * 180.0 / M_PI;
+  }
 
   bool operator==(const VRFieldOfView& other) const {
     return other.upDegrees == upDegrees &&
