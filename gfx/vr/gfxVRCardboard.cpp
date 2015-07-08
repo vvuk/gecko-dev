@@ -336,7 +336,7 @@ HMDInfoCardboard::Destroy()
 bool
 VRHMDManagerCardboard::PlatformInit()
 {
-  return gfxPrefs::VRCardboardEnabled();
+  return gfxPrefs::VREnabled() && gfxPrefs::VRCardboardEnabled();
 }
 
 bool

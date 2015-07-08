@@ -379,8 +379,11 @@ VRHMDManagerOpenVR::PlatformInit()
   if (mOpenVRPlatformInitialized)
     return true;
 
-  if (!gfxPrefs::VREnabled())
+  if (!gfxPrefs::VREnabled() ||
+      !gfxPrefs::VROpenVREnabled())
+  {
     return false;
+  }
 
   if (!LoadOpenVRRuntime())
     return false;
