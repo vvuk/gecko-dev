@@ -6146,6 +6146,14 @@ nsGlobalWindow::SetFullScreenInternal(bool aFullScreen, bool aFullscreenMode,
   // gone full screen, the state trap above works.
   mFullScreen = aFullScreen;
 
+  // If we're about to enter fullscreen, update mVRHMDInfo with any
+  // HMD.  If we're not fullscreen, then we can't be on a HMD.
+  if (mFullScreen) {
+    mVRHMDInfo = aHMD;
+  } else {
+    mVRHMDInfo = nullptr;
+  }
+
   // Sometimes we don't want the top-level widget to actually go fullscreen,
   // for example in the B2G desktop client, we don't want the emulated screen
   // dimensions to appear to increase when entering fullscreen mode; we just

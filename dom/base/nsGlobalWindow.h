@@ -787,6 +787,14 @@ public:
   void EnableGamepadUpdates();
   void DisableGamepadUpdates();
 
+  // Outer windows only.
+  mozilla::gfx::VRHMDInfo* GetVRHMD() const {
+    MOZ_ASSERT(IsOuterWindow());
+    return mVRHMDInfo;
+  }
+
+  nsRefPtr<mozilla::gfx::VRHMDInfo>          mVRHMDInfo;
+
   // Get the VR devices for this window, initializing if necessary
   bool GetVRDevices(nsTArray<nsRefPtr<mozilla::dom::VRDevice>>& aDevices);
 
@@ -1747,7 +1755,7 @@ protected:
 
   // Did VR get initialized for this window?
   bool                                       mVRDevicesInitialized;
-  // The VRDevies for this window
+  // The VRDevices for this window
   nsTArray<nsRefPtr<mozilla::dom::VRDevice>> mVRDevices;
   // Any attached HMD when fullscreen
   nsRefPtr<mozilla::gfx::VRHMDInfo>          mVRHMDInfo;
