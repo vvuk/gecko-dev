@@ -74,6 +74,7 @@ TextureSourceD3D11::GetShaderResourceView()
     mTexture->GetDevice(byRef(device));
     HRESULT hr = device->CreateShaderResourceView(mTexture, nullptr, byRef(mSRV));
     if (FAILED(hr)) {
+      gfxCriticalError(CriticalLog::DefaultOptions(false)) << "[D3D11] TextureSourceD3D11:GetShaderResourceView CreateSRV failure " << gfx::hexa(hr);
       return nullptr;
     }
   }
