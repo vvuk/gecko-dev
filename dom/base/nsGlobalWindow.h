@@ -788,12 +788,10 @@ public:
   void DisableGamepadUpdates();
 
   // Outer windows only.
-  mozilla::gfx::VRHMDInfo* GetVRHMD() const {
+  mozilla::gfx::VRHMDInfo* GetVRHMD() const override {
     MOZ_ASSERT(IsOuterWindow());
     return mVRHMDInfo;
   }
-
-  nsRefPtr<mozilla::gfx::VRHMDInfo>          mVRHMDInfo;
 
   // Get the VR devices for this window, initializing if necessary
   bool GetVRDevices(nsTArray<nsRefPtr<mozilla::dom::VRDevice>>& aDevices);

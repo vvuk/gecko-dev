@@ -208,11 +208,15 @@ public:
 
   virtual uint32_t GetSupportedSensorStateBits() { return mSupportedSensorBits; }
   virtual bool StartSensorTracking() = 0;
-  virtual VRHMDSensorState GetSensorState(double timeOffset = 0.0) = 0;
   virtual void StopSensorTracking() = 0;
 
   virtual void ZeroSensor() = 0;
 
+  virtual void UpdateStateForFrame(uint64_t aFrameTimeEpoch, TimeStamp aFrameTime) { }
+
+  virtual bool GetCurrentFrameSensorStateTime(uint64_t& aFrameTimeEpoch, TimeStamp& aFrameTime) { return false; }
+  virtual VRHMDSensorState GetCurrentFrameSensorState() { return GetSensorState(); }
+  virtual VRHMDSensorState GetSensorState(double timeOffset = 0.0) = 0;
 
   // if rendering is offloaded
   virtual VRHMDRenderingSupport *GetRenderingSupport() { return nullptr; }

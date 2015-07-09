@@ -744,6 +744,9 @@ public:
     return mMarkedCCGeneration;
   }
 
+  // If the Window has a fullscreen HMD set on it, return it here.
+  virtual mozilla::gfx::VRHMDInfo* GetVRHMD() const { return nullptr; }
+
 protected:
   // The nsPIDOMWindow constructor. The aOuterWindow argument should
   // be null if and only if the created window itself is an outer
