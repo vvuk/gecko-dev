@@ -6402,7 +6402,8 @@ FullscreenTransitionTask::Observer::Observe(nsISupports* aSubject,
 
 static bool
 MakeWidgetFullscreen(nsGlobalWindow* aWindow, gfx::VRHMDInfo* aHMD,
-                     nsPIDOMWindow::FullscreenReason aReason, bool aFullscreen)
+                     nsPIDOMWindow::FullscreenReason aReason, bool aFullscreen,
+                     bool aForceSkipTransition)
 {
   nsCOMPtr<nsIWidget> widget = aWindow->GetMainWidget();
   if (!widget) {
@@ -6412,7 +6413,7 @@ MakeWidgetFullscreen(nsGlobalWindow* aWindow, gfx::VRHMDInfo* aHMD,
   FullscreenTransitionDuration duration;
   bool performTransition = false;
   nsCOMPtr<nsISupports> transitionData;
-  if (aReason == nsPIDOMWindow::eForFullscreenAPI) {
+  if (aReason == nsPIDOMWindow::eForFullscreenAPI && !aForceSkipTransition) {
     GetFullscreenTransitionDuration(aFullscreen, &duration);
     if (!duration.IsSuppressed()) {
       performTransition = widget->
@@ -6472,6 +6473,14 @@ nsGlobalWindow::SetFullscreenInternal(FullscreenReason aReason,
   if (mFullScreen == aFullScreen)
     return NS_OK;
 
+  // if we're entering DOM fullscreen and have a HMD,
+  // or exiting and had a HMD before, we will skip the transition
+  bool forceSkipTransition = (aReason == eForFullscreenAPI)
+    && ((aFullScreen && aHMD) || (!aFullScreen && mVRHMDInfo));
+
+  // save the HMD info (or clear it if exiting)
+  mVRHMDInfo = aHMD;
+
   // Note that although entering DOM fullscreen could also cause
   // consequential calls to this method, those calls will be skipped
   // at the condition above.
@@ -6504,7 +6513,8 @@ nsGlobalWindow::SetFullscreenInternal(FullscreenReason aReason,
   // dimensions to appear to increase when entering fullscreen mode; we just
   // want the content to fill the entire client area of the emulator window.
   if (!Preferences::GetBool("full-screen-api.ignore-widgets", false)) {
-    if (MakeWidgetFullscreen(this, aHMD, aReason, aFullScreen)) {
+    if (MakeWidgetFullscreen(this, aHMD, aReason, aFullScreen,
+                             forceSkipTransition)) {
       // The rest of code for switching fullscreen is in nsGlobalWindow::
       // FinishFullscreenChange() which will be called after sizemodechange
       // event is dispatched.
