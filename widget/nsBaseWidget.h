@@ -312,6 +312,9 @@ public:
     return false;
   }
 
+  void SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD) override;
+  mozilla::gfx::VRHMDInfo* GetAttachedHMD() override;
+
   /**
    * Use this when GetLayerManager() returns a BasicLayerManager
    * (nsBaseWidget::GetLayerManager() does). This sets up the widget's
@@ -516,6 +519,8 @@ protected:
   bool              mUpdateCursor;
   bool              mUseAttachedEvents;
   bool              mIMEHasFocus;
+
+  nsRefPtr<mozilla::gfx::VRHMDInfo> mHMD;
 
   static nsIRollupListener* gRollupListener;
 

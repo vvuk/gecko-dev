@@ -60,6 +60,7 @@ struct ScrollableLayerGuid;
 namespace gfx {
 class DrawTarget;
 class SourceSurface;
+class VRHMDInfo;
 } // namespace gfx
 namespace widget {
 class TextEventDispatcher;
@@ -1665,6 +1666,12 @@ class nsIWidget : public nsISupports {
      * otherwise.
      */
     virtual bool CaptureWidgetOnScreen(mozilla::RefPtr<mozilla::gfx::DrawTarget> aDT) = 0;
+
+    /**
+     * If the widget is being displayed on a VR HMD, that HMD is accessible here.
+     */
+    virtual void SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD) {}
+    virtual mozilla::gfx::VRHMDInfo* GetAttachedHMD() { return nullptr; }
 
 private:
   class LongTapInfo
