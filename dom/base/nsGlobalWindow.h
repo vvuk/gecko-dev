@@ -1550,6 +1550,8 @@ public:
 public:
   virtual already_AddRefed<nsPIWindowRoot> GetTopWindowRoot() override;
 
+  mozilla::gfx::VRHMDInfo* GetVRHMD() override { return mVRHMDInfo; }
+
 protected:
   static void NotifyDOMWindowDestroyed(nsGlobalWindow* aWindow);
   void NotifyWindowIDDestroyed(const char* aTopic);
