@@ -223,6 +223,12 @@ HMDInfoCardboard::ZeroSensor()
   mSensorZeroInverse.Invert();
 }
 
+double
+HMDInfoCardboard::RefreshInterval()
+{
+  return 1000.0 / 100.0;
+}
+
 bool
 HMDInfoCardboard::SetFOV(const VRFieldOfView& aFOVLeft,
                          const VRFieldOfView& aFOVRight,

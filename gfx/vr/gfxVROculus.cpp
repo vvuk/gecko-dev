@@ -375,6 +375,12 @@ HMDInfoOculus::ZeroSensor()
   ovrHmd_RecenterPose(mHMD);
 }
 
+double
+HMDInfoOculus::RefreshInterval()
+{
+  return 1000.0 / 100.0;
+}
+
 VRHMDSensorState
 HMDInfoOculus::GetSensorState(double timeOffset)
 {
