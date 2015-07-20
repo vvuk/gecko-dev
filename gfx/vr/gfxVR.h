@@ -213,6 +213,8 @@ public:
 
   virtual void ZeroSensor() = 0;
 
+  // return the refresh interval (in ms per frame) for this HMD
+  virtual double RefreshInterval() { return 1000.0 / 60.0; }
 
   // if rendering is offloaded
   virtual VRHMDRenderingSupport *GetRenderingSupport() { return nullptr; }

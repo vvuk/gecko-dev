@@ -35,6 +35,8 @@ public:
   void StopSensorTracking() override;
   void ZeroSensor() override;
 
+  double RefreshInterval() override;
+
   void FillDistortionConstants(uint32_t whichEye,
                                const IntSize& textureSize, const IntRect& eyeViewport,
                                const Size& destViewport, const Rect& destRect,
