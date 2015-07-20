@@ -40,6 +40,7 @@
 #include "mozilla/unused.h"
 #include "nsContentUtils.h"
 #include "gfxPrefs.h"
+#include "gfxVR.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/MouseEvents.h"
 #include "GLConsts.h"
@@ -1839,6 +1840,18 @@ nsBaseWidget::UnregisterPluginWindowForRemoteUpdates()
   MOZ_ASSERT(sPluginWidgetList);
   sPluginWidgetList->Remove(id);
 #endif
+}
+
+void
+nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
+{
+  mHMD = aHMD;
+}
+
+mozilla::gfx::VRHMDInfo*
+nsBaseWidget::GetAttachedHMD()
+{
+  return mHMD;
 }
 
 // static
