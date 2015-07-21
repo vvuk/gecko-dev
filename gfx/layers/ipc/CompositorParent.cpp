@@ -69,7 +69,6 @@
 #ifdef MOZ_ENABLE_PROFILER_SPS
 #include "ProfilerMarkers.h"
 #endif
-#include "mozilla/VsyncDispatcher.h"
 
 #ifdef MOZ_WIDGET_GONK
 #include "GeckoTouchDispatcher.h"
@@ -289,7 +288,7 @@ CompositorVsyncScheduler::CompositorVsyncScheduler(CompositorParent* aCompositor
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(aWidget != nullptr);
   mVsyncObserver = new Observer(this);
-  mCompositorVsyncDispatcher = aWidget->GetCompositorVsyncDispatcher();
+  mCompositorWidget = aWidget;
 #ifdef MOZ_WIDGET_GONK
   GeckoTouchDispatcher::GetInstance()->SetCompositorVsyncScheduler(this);
 #endif
@@ -304,9 +303,12 @@ CompositorVsyncScheduler::~CompositorVsyncScheduler()
 {
   MOZ_ASSERT(!mIsObservingVsync);
   MOZ_ASSERT(!mVsyncObserver);
-  // The CompositorVsyncDispatcher is cleaned up before this in the nsBaseWidget, which stops vsync listeners
   mCompositorParent = nullptr;
-  mCompositorVsyncDispatcher = nullptr;
+  // just in case
+  UnobserveVsync();
+  mVsyncObserver->Destroy();
+  mVsyncObserver = nullptr;
+  mCompositorWidget = nullptr;
 }
 
 void
@@ -463,7 +465,7 @@ void
 CompositorVsyncScheduler::ObserveVsync()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  mCompositorVsyncDispatcher->SetCompositorVsyncObserver(mVsyncObserver);
+  mCompositorWidget->AddVsyncObserver(mVsyncObserver);
   mIsObservingVsync = true;
 }
 
@@ -471,7 +473,7 @@ void
 CompositorVsyncScheduler::UnobserveVsync()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  mCompositorVsyncDispatcher->SetCompositorVsyncObserver(nullptr);
+  mCompositorWidget->RemoveVsyncObserver(mVsyncObserver);
   mIsObservingVsync = false;
 }
 
