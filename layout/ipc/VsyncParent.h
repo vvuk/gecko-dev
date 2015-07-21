@@ -15,6 +15,10 @@ class nsIThread;
 
 namespace mozilla {
 
+namespace gfx {
+class VsyncSource;
+} // namespace gfx
+
 namespace ipc {
 class BackgroundParentImpl;
 } // namespace ipc
@@ -46,7 +50,7 @@ private:
   bool mObservingVsync;
   bool mDestroyed;
   nsCOMPtr<nsIThread> mBackgroundThread;
-  nsRefPtr<RefreshTimerVsyncDispatcher> mVsyncDispatcher;
+  nsRefPtr<gfx::VsyncSource> mVsyncSource; // XXX should be a VsyncSource::Display once we refcount those
 };
 
 } // namespace layout

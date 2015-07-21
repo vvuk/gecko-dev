@@ -25,7 +25,7 @@ VsyncParent::Create()
   AssertIsOnBackgroundThread();
   nsRefPtr<gfx::VsyncSource> vsyncSource = gfxPlatform::GetPlatform()->GetHardwareVsync();
   nsRefPtr<VsyncParent> vsyncParent = new VsyncParent();
-  vsyncParent->mVsyncDispatcher = vsyncSource->GetRefreshTimerVsyncDispatcher();
+  vsyncParent->mVsyncSource = vsyncSource; // XXX this should be a VsyncSource::Display, once we refcount those
   return vsyncParent.forget();
 }
 
@@ -77,7 +77,8 @@ VsyncParent::RecvObserve()
 {
   AssertIsOnBackgroundThread();
   if (!mObservingVsync) {
-    mVsyncDispatcher->AddChildRefreshTimer(this);
+    // XXX we should be calling this on mVsyncDisplay directly
+    mVsyncSource->GetGlobalDisplay().AddVsyncObserver(this);
     mObservingVsync = true;
     return true;
   }
@@ -89,7 +90,8 @@ VsyncParent::RecvUnobserve()
 {
   AssertIsOnBackgroundThread();
   if (mObservingVsync) {
-    mVsyncDispatcher->RemoveChildRefreshTimer(this);
+    // XXX we should be callign this on mVsyncDisplay directly
+    mVsyncSource->GetGlobalDisplay().RemoveVsyncObserver(this);
     mObservingVsync = false;
     return true;
   }
@@ -102,9 +104,10 @@ VsyncParent::ActorDestroy(ActorDestroyReason aReason)
   MOZ_ASSERT(!mDestroyed);
   AssertIsOnBackgroundThread();
   if (mObservingVsync) {
-    mVsyncDispatcher->RemoveChildRefreshTimer(this);
+    // XXX we should be callign this on mVsyncDisplay directly
+    mVsyncSource->GetGlobalDisplay().RemoveVsyncObserver(this);
   }
-  mVsyncDispatcher = nullptr;
+  mVsyncSource = nullptr;
   mDestroyed = true;
 }
 

@@ -1,4 +1,4 @@
-/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 2 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -13,7 +13,7 @@
 #include "nsISupportsImpl.h"
 
 namespace mozilla {
-class RefreshTimerVsyncDispatcher;
+class VsyncObserver;
 
 namespace gfx {
 
@@ -23,14 +23,19 @@ class VsyncSource
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncSource)
 
-  typedef mozilla::RefreshTimerVsyncDispatcher RefreshTimerVsyncDispatcher;
-
 public:
   // Controls vsync unique to each display and unique on each platform
   class Display {
     public:
       Display();
       virtual ~Display();
+
+      // Add or remove a vsync observer to be notified when vsync
+      // happens.  This notification will happen *on the vsync
+      // thread*, so if you expect to do any significant work, get off
+      // that thread ASAP in the observer callback.
+      void AddVsyncObserver(VsyncObserver *aObserver);
+      bool RemoveVsyncObserver(VsyncObserver *aObserver);
 
       // Notified when this display's vsync occurs, on the vsync thread
       // The aVsyncTimestamp should normalize to the Vsync time that just occured
@@ -43,10 +48,6 @@ public:
       // Large parts of Gecko assume TimeStamps should not be in the future such as animations
       virtual void NotifyVsync(TimeStamp aVsyncTimestamp);
 
-      nsRefPtr<RefreshTimerVsyncDispatcher> GetRefreshTimerVsyncDispatcher();
-
-      void NotifyRefreshTimerVsyncStatus(bool aEnable);
-
       // These should all only be called on the main thread
       virtual void EnableVsync() = 0;
       virtual void DisableVsync() = 0;
@@ -55,12 +56,10 @@ public:
     private:
       void UpdateVsyncStatus();
 
-      Mutex mDispatcherLock;
-      bool mRefreshTimerNeedsVsync;
-      nsRefPtr<RefreshTimerVsyncDispatcher> mRefreshTimerVsyncDispatcher;
+      Monitor mObserversMonitor;
+      nsTArray<nsRefPtr<VsyncObserver>> mVsyncObservers;
   };
 
-  nsRefPtr<RefreshTimerVsyncDispatcher> GetRefreshTimerVsyncDispatcher();
   virtual Display& GetGlobalDisplay() = 0; // Works across all displays
 
 protected:

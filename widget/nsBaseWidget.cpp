@@ -1106,8 +1106,8 @@ public:
       
       gfxPlatform::GetPlatform()->
         GetHardwareVsync()->
-        GetRefreshTimerVsyncDispatcher()->
-        RemoveChildRefreshTimer(this);
+        GetGlobalDisplay().
+        RemoveVsyncObserver(this);
       mObservedVsyncDirectly = false;
     }
   }
@@ -1145,8 +1145,8 @@ public:
     // XXX replace this with a generic vsync source thing
     gfxPlatform::GetPlatform()->
       GetHardwareVsync()->
-      GetRefreshTimerVsyncDispatcher()->
-      AddChildRefreshTimer(this);
+      GetGlobalDisplay().
+      AddVsyncObserver(this);
     mObservedVsyncDirectly = true;
   }
 

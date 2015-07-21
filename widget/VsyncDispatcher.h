@@ -31,38 +31,6 @@ protected:
   virtual ~VsyncObserver() {}
 }; // VsyncObserver
 
-// Dispatch vsync event to ipc actor parent and chrome RefreshTimer.
-class RefreshTimerVsyncDispatcher final
-{
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(RefreshTimerVsyncDispatcher)
-
-public:
-  RefreshTimerVsyncDispatcher();
-
-  // Called on the vsync thread when a hardware vsync occurs
-  void NotifyVsync(TimeStamp aVsyncTimestamp);
-
-  // Set chrome process's RefreshTimer to this dispatcher.
-  // This function can be called from any thread.
-  void SetParentRefreshTimer(VsyncObserver* aVsyncObserver);
-
-  // Add or remove the content process' RefreshTimer to this dispatcher. This
-  // will be a no-op for AddChildRefreshTimer() if the observer is already
-  // registered.
-  // These functions can be called from any thread.
-  void AddChildRefreshTimer(VsyncObserver* aVsyncObserver);
-  void RemoveChildRefreshTimer(VsyncObserver* aVsyncObserver);
-
-private:
-  virtual ~RefreshTimerVsyncDispatcher();
-  void UpdateVsyncStatus();
-  bool NeedsVsync();
-
-  Mutex mRefreshTimersLock;
-  nsRefPtr<VsyncObserver> mParentRefreshTimer;
-  nsTArray<nsRefPtr<VsyncObserver>> mChildRefreshTimers;
-};
-
 } // namespace mozilla
 
 #endif // mozilla_widget_VsyncDispatcher_h

@@ -1,4 +1,4 @@
-/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 2 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -12,49 +12,57 @@
 namespace mozilla {
 namespace gfx {
 
-nsRefPtr<RefreshTimerVsyncDispatcher>
-VsyncSource::GetRefreshTimerVsyncDispatcher()
-{
-  MOZ_ASSERT(XRE_IsParentProcess());
-  return GetGlobalDisplay().GetRefreshTimerVsyncDispatcher();
-}
-
 VsyncSource::Display::Display()
-  : mDispatcherLock("display dispatcher lock")
-  , mRefreshTimerNeedsVsync(false)
+  : mObserversMonitor("VsyncSource Display observers mutation monitor")
 {
   MOZ_ASSERT(NS_IsMainThread());
-  mRefreshTimerVsyncDispatcher = new RefreshTimerVsyncDispatcher();
 }
 
 VsyncSource::Display::~Display()
 {
   MOZ_ASSERT(NS_IsMainThread());
-  MutexAutoLock lock(mDispatcherLock);
-  mRefreshTimerVsyncDispatcher = nullptr;
+}
+
+void
+VsyncSource::Display::AddVsyncObserver(VsyncObserver *aObserver)
+{
+  { // scope lock
+    MonitorAutoLock lock(mObserversMonitor);
+    if (!mVsyncObservers.Contains(aObserver)) {
+      mVsyncObservers.AppendElement(aObserver);
+    }
+  }
+
+  UpdateVsyncStatus();
+}
+
+bool
+VsyncSource::Display::RemoveVsyncObserver(VsyncObserver *aObserver)
+{
+  bool found = false;
+  { // scope lock
+    MonitorAutoLock lock(mObserversMonitor);
+    found = mVsyncObservers.RemoveElement(aObserver);
+  }
+
+  if (found)
+    UpdateVsyncStatus();
+  return found;
 }
 
 void
 VsyncSource::Display::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
   // Called on the vsync thread
-  MutexAutoLock lock(mDispatcherLock);
-
-  mRefreshTimerVsyncDispatcher->NotifyVsync(aVsyncTimestamp);
-}
-
-void
-VsyncSource::Display::NotifyRefreshTimerVsyncStatus(bool aEnable)
-{
-  MOZ_ASSERT(NS_IsMainThread());
-  mRefreshTimerNeedsVsync = aEnable;
-  UpdateVsyncStatus();
+  MonitorAutoLock lock(mObserversMonitor);
+  for (size_t i = 0; i < mVsyncObservers.Length(); ++i) {
+    mVsyncObservers[i]->NotifyVsync(aVsyncTimestamp);
+  }
 }
 
 void
 VsyncSource::Display::UpdateVsyncStatus()
 {
-  MOZ_ASSERT(NS_IsMainThread());
   // WARNING: This function SHOULD NOT BE CALLED WHILE HOLDING LOCKS
   // NotifyVsync grabs a lock to dispatch vsync events
   // When disabling vsync, we wait for the underlying thread to stop on some platforms
@@ -62,8 +70,8 @@ VsyncSource::Display::UpdateVsyncStatus()
   // while the vsync thread is in NotifyVsync.
   bool enableVsync = false;
   { // scope lock
-    MutexAutoLock lock(mDispatcherLock);
-    enableVsync = mRefreshTimerNeedsVsync;
+    MonitorAutoLock lock(mObserversMonitor);
+    enableVsync = mVsyncObservers.Length() > 0;
   }
 
   if (enableVsync) {
@@ -75,12 +83,6 @@ VsyncSource::Display::UpdateVsyncStatus()
   if (IsVsyncEnabled() != enableVsync) {
     NS_WARNING("Vsync status did not change.");
   }
-}
-
-nsRefPtr<RefreshTimerVsyncDispatcher>
-VsyncSource::Display::GetRefreshTimerVsyncDispatcher()
-{
-  return mRefreshTimerVsyncDispatcher;
 }
 
 } //namespace gfx
