@@ -310,6 +310,8 @@ void nsBaseWidget::BaseCreate(nsIWidget *aParent,
   if (aParent) {
     aParent->AddChild(this);
   }
+
+  UpdateVsyncObserver();
 }
 
 NS_IMETHODIMP nsBaseWidget::CaptureMouse(bool aCapture)
@@ -1324,7 +1326,6 @@ void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
     return;
   }
 
-  CreateCompositorVsyncDispatcher();
   mCompositorParent = NewCompositorParent(aWidth, aHeight);
   nsRefPtr<ClientLayerManager> lm = new ClientLayerManager(this);
   mCompositorChild = new CompositorChild(lm);
