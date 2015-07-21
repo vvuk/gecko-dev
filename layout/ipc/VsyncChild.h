@@ -39,13 +39,16 @@ public:
   // Bind a VsyncObserver into VsyncChild after ipc channel connected.
   void SetVsyncObserver(VsyncObserver* aVsyncObserver);
 
+  int32_t DisplayIdentifier() const { return mDisplayIdentifier; }
+
 private:
-  VsyncChild();
+  VsyncChild(int32_t aDisplayIdentifier);
   virtual ~VsyncChild();
 
   virtual bool RecvNotify(const TimeStamp& aVsyncTimestamp) override;
   virtual void ActorDestroy(ActorDestroyReason aActorDestroyReason) override;
 
+  int32_t mDisplayIdentifier;
   bool mObservingVsync;
   bool mIsShutdown;
 
