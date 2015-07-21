@@ -14,7 +14,6 @@
 
 namespace mozilla {
 class RefreshTimerVsyncDispatcher;
-class CompositorVsyncDispatcher;
 
 namespace gfx {
 
@@ -25,7 +24,6 @@ class VsyncSource
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncSource)
 
   typedef mozilla::RefreshTimerVsyncDispatcher RefreshTimerVsyncDispatcher;
-  typedef mozilla::CompositorVsyncDispatcher CompositorVsyncDispatcher;
 
 public:
   // Controls vsync unique to each display and unique on each platform
@@ -47,8 +45,6 @@ public:
 
       nsRefPtr<RefreshTimerVsyncDispatcher> GetRefreshTimerVsyncDispatcher();
 
-      void AddCompositorVsyncDispatcher(CompositorVsyncDispatcher* aCompositorVsyncDispatcher);
-      void RemoveCompositorVsyncDispatcher(CompositorVsyncDispatcher* aCompositorVsyncDispatcher);
       void NotifyRefreshTimerVsyncStatus(bool aEnable);
 
       // These should all only be called on the main thread
@@ -61,12 +57,8 @@ public:
 
       Mutex mDispatcherLock;
       bool mRefreshTimerNeedsVsync;
-      nsTArray<nsRefPtr<CompositorVsyncDispatcher>> mCompositorVsyncDispatchers;
       nsRefPtr<RefreshTimerVsyncDispatcher> mRefreshTimerVsyncDispatcher;
   };
-
-  void AddCompositorVsyncDispatcher(CompositorVsyncDispatcher* aCompositorVsyncDispatcher);
-  void RemoveCompositorVsyncDispatcher(CompositorVsyncDispatcher* aCompositorVsyncDispatcher);
 
   nsRefPtr<RefreshTimerVsyncDispatcher> GetRefreshTimerVsyncDispatcher();
   virtual Display& GetGlobalDisplay() = 0; // Works across all displays
