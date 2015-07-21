@@ -156,7 +156,6 @@ nsBaseWidget::nsBaseWidget()
 , mAttachedWidgetListener(nullptr)
 , mPreviouslyAttachedWidgetListener(nullptr)
 , mLayerManager(nullptr)
-, mCompositorVsyncDispatcher(nullptr)
 , mVsyncObserversLock("Widget vsync observer lock")
 , mCursor(eCursor_standard)
 , mBorderStyle(eBorderStyle_none)
@@ -255,12 +254,6 @@ void nsBaseWidget::DestroyCompositor()
     nsRefPtr<CompositorChild> compositorChild = mCompositorChild;
     nsRefPtr<CompositorParent> compositorParent = mCompositorParent;
     mCompositorChild->Destroy();
-  }
-
-  // Can have base widgets that are things like tooltips
-  // which don't have CompositorVsyncDispatchers
-  if (mCompositorVsyncDispatcher) {
-    mCompositorVsyncDispatcher->Shutdown();
   }
 }
 
@@ -1030,25 +1023,6 @@ nsBaseWidget::GetDocument() const
     }
   }
   return nullptr;
-}
-
-void nsBaseWidget::CreateCompositorVsyncDispatcher()
-{
-  // Parent directly listens to the vsync source whereas
-  // child process communicate via IPC
-  // Should be called AFTER gfxPlatform is initialized
-  if (XRE_IsParentProcess()) {
-    mCompositorVsyncDispatcher = new CompositorVsyncDispatcher();
-  }
-
-  // XXX this isn't the right place for this, but it'll work
-  UpdateVsyncObserver();
-}
-
-CompositorVsyncDispatcher*
-nsBaseWidget::GetCompositorVsyncDispatcher()
-{
-  return mCompositorVsyncDispatcher;
 }
 
 namespace {

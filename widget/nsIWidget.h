@@ -41,7 +41,6 @@ class   nsIScreen;
 class   nsIRunnable;
 
 namespace mozilla {
-class CompositorVsyncDispatcher;
 class VsyncObserver;
 namespace dom {
 class TabChild;
@@ -331,7 +330,6 @@ class nsIWidget : public nsISupports {
     typedef mozilla::widget::InputContextAction InputContextAction;
     typedef mozilla::widget::SizeConstraints SizeConstraints;
     typedef mozilla::widget::TextEventDispatcher TextEventDispatcher;
-    typedef mozilla::CompositorVsyncDispatcher CompositorVsyncDispatcher;
 
     // Used in UpdateThemeGeometries.
     struct ThemeGeometry {
@@ -506,10 +504,8 @@ class nsIWidget : public nsISupports {
     virtual float GetDPI() = 0;
 
     /**
-     * Returns the CompositorVsyncDispatcher associated with this widget
+     * Add or remove a vsync observer for this widget's vsync signal
      */
-    virtual CompositorVsyncDispatcher* GetCompositorVsyncDispatcher() = 0;
-
     virtual bool AddVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }
     virtual bool RemoveVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }
 

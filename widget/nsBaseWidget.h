@@ -47,7 +47,6 @@ namespace layout {
 class VsyncChild;
 } // namespace layout (XXX to move from layout to gfx)
 
-class CompositorVsyncDispatcher;
 class VsyncObserver;
 } // namespace mozilla
 
@@ -274,8 +273,6 @@ public:
   /*
    * Vsync
    */
-  CompositorVsyncDispatcher* GetCompositorVsyncDispatcher() override;
-  void CreateCompositorVsyncDispatcher();
   bool AddVsyncObserver(mozilla::VsyncObserver *aObserver) override;
   bool RemoveVsyncObserver(mozilla::VsyncObserver *aObserver) override;
 
@@ -288,7 +285,6 @@ protected:
   void UpdateVsyncObserver();
   void ForwardVsyncNotification(mozilla::TimeStamp aVsyncTimestamp);
 
-  nsRefPtr<mozilla::CompositorVsyncDispatcher> mCompositorVsyncDispatcher;
   nsRefPtr<mozilla::layout::VsyncChild> mVsyncChild;
   nsRefPtr<VsyncForwardingObserver> mIncomingVsyncObserver;
   nsTArray<nsRefPtr<mozilla::VsyncObserver>> mVsyncObservers;
