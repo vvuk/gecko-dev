@@ -11,8 +11,9 @@
 namespace mozilla {
 namespace layout {
 
-VsyncChild::VsyncChild()
-  : mObservingVsync(false)
+VsyncChild::VsyncChild(int32_t aDisplayIdentifier)
+  : mDisplayIdentifier(aDisplayIdentifier)
+  , mObservingVsync(false)
   , mIsShutdown(false)
 {
   MOZ_ASSERT(NS_IsMainThread());

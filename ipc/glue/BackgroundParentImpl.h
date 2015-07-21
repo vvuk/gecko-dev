@@ -65,7 +65,7 @@ protected:
                                   override;
 
   virtual PVsyncParent*
-  AllocPVsyncParent() override;
+  AllocPVsyncParent(const int32_t& aDisplayIdentifier) override;
 
   virtual bool
   DeallocPVsyncParent(PVsyncParent* aActor) override;

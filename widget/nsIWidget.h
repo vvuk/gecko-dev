@@ -42,6 +42,7 @@ class   nsIRunnable;
 
 namespace mozilla {
 class CompositorVsyncDispatcher;
+class VsyncObserver;
 namespace dom {
 class TabChild;
 } // namespace dom
@@ -508,6 +509,9 @@ class nsIWidget : public nsISupports {
      * Returns the CompositorVsyncDispatcher associated with this widget
      */
     virtual CompositorVsyncDispatcher* GetCompositorVsyncDispatcher() = 0;
+
+    virtual bool AddVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }
+    virtual bool RemoveVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }
 
     /**
      * Return the default scale factor for the window. This is the

@@ -359,8 +359,9 @@ private:
 
   void FinishedWaitingForTransaction();
 
-  mozilla::RefreshDriverTimer* ChooseTimer() const;
-  mozilla::RefreshDriverTimer* mActiveTimer;
+  already_AddRefed<mozilla::RefreshDriverTimer> ChooseTimer() const;
+  nsRefPtr<mozilla::RefreshDriverTimer> mActiveTimer;
+  nsRefPtr<mozilla::RefreshDriverTimer> mLastActiveTimer;
 
   ProfilerBacktrace* mReflowCause;
   ProfilerBacktrace* mStyleCause;

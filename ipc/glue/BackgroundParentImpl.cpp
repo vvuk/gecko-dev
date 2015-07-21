@@ -255,7 +255,7 @@ BackgroundParentImpl::DeallocPNuwaParent(PNuwaParent *aActor)
 }
 
 BackgroundParentImpl::PVsyncParent*
-BackgroundParentImpl::AllocPVsyncParent()
+BackgroundParentImpl::AllocPVsyncParent(const int32_t& aDisplayIdentifier)
 {
   AssertIsInMainProcess();
   AssertIsOnBackgroundThread();

@@ -48,7 +48,7 @@ parent:
 
   PBackgroundIDBFactory(LoggingInfo loggingInfo);
 
-  PVsync();
+  PVsync(int32_t aSomeKindOfScreenIdentifierPassZeroForNow);
 
   PUDPSocket(OptionalPrincipalInfo pInfo, nsCString filter);
   PBroadcastChannel(PrincipalInfo pInfo, nsCString origin, nsString channel,

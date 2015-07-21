@@ -129,6 +129,9 @@ PuppetWidget::Create(nsIWidget        *aParent,
     obs->AddObserver(mMemoryPressureObserver, "memory-pressure", false);
   }
 
+  // XXX this isn't the right place for this, but it'll work
+  UpdateVsyncObserver();
+
   return NS_OK;
 }
 
