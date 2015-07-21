@@ -2512,7 +2512,6 @@ public:
 
       virtual void EnableVsync() override
       {
-        MOZ_ASSERT(NS_IsMainThread());
         MOZ_ASSERT(mVsyncThread->IsRunning());
         { // scope lock
           MonitorAutoLock lock(mVsyncEnabledLock);
@@ -2529,7 +2528,6 @@ public:
 
       virtual void DisableVsync() override
       {
-        MOZ_ASSERT(NS_IsMainThread());
         MOZ_ASSERT(mVsyncThread->IsRunning());
         MonitorAutoLock lock(mVsyncEnabledLock);
         if (!mVsyncEnabled) {
@@ -2540,7 +2538,6 @@ public:
 
       virtual bool IsVsyncEnabled() override
       {
-        MOZ_ASSERT(NS_IsMainThread());
         MonitorAutoLock lock(mVsyncEnabledLock);
         return mVsyncEnabled;
       }

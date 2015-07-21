@@ -121,6 +121,7 @@ TEST_F(VsyncTester, EnableVsync)
   ASSERT_FALSE(globalDisplay.IsVsyncEnabled());
 }
 
+#if 0
 // Test that if we have vsync enabled, the parent refresh driver should get notifications
 TEST_F(VsyncTester, ParentRefreshDriverGetVsyncNotifications)
 {
@@ -172,3 +173,4 @@ TEST_F(VsyncTester, ChildRefreshDriverGetVsyncNotifications)
   vsyncDispatcher = nullptr;
   testVsyncObserver = nullptr;
 }
+#endif
