@@ -9,10 +9,10 @@
 #include "gfxPlatform.h"
 #include "nsThreadUtils.h"
 
-SoftwareVsyncSource::SoftwareVsyncSource()
+SoftwareVsyncSource::SoftwareVsyncSource(double aInterval)
 {
   MOZ_ASSERT(NS_IsMainThread());
-  mGlobalDisplay = new SoftwareDisplay();
+  mGlobalDisplay = new SoftwareDisplay(aInterval);
 }
 
 SoftwareVsyncSource::~SoftwareVsyncSource()
@@ -22,14 +22,13 @@ SoftwareVsyncSource::~SoftwareVsyncSource()
   mGlobalDisplay = nullptr;
 }
 
-SoftwareDisplay::SoftwareDisplay()
+SoftwareDisplay::SoftwareDisplay(double aInterval)
   : mCurrentVsyncTask(nullptr)
   , mVsyncEnabled(false)
 {
   // Mimic 60 fps
   MOZ_ASSERT(NS_IsMainThread());
-  const double rate = 1000.0 / (double) gfxPlatform::GetSoftwareVsyncRate();
-  mVsyncRate = mozilla::TimeDuration::FromMilliseconds(rate);
+  mVsyncRate = mozilla::TimeDuration::FromMilliseconds(aInterval);
   mVsyncThread = new base::Thread("SoftwareVsyncThread");
   MOZ_RELEASE_ASSERT(mVsyncThread->Start(), "Could not start software vsync thread");
 }
