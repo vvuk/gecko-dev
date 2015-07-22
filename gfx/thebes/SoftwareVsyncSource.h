@@ -21,7 +21,7 @@ class SoftwareDisplay final : public mozilla::gfx::VsyncSource::Display
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(SoftwareDisplay)
 
 public:
-  SoftwareDisplay();
+  SoftwareDisplay(double aInterval = 1000.0 / 60.0);
   virtual void EnableVsync() override;
   virtual void DisableVsync() override;
   virtual bool IsVsyncEnabled() override;
@@ -47,7 +47,7 @@ private:
 class SoftwareVsyncSource : public mozilla::gfx::VsyncSource
 {
 public:
-  SoftwareVsyncSource();
+  SoftwareVsyncSource(double aInterval = 1000.0 / 60.0);
   ~SoftwareVsyncSource();
 
   virtual Display& GetGlobalDisplay() override
