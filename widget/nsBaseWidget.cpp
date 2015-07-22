@@ -66,6 +66,7 @@
 #ifdef ACCESSIBILITY
 #include "nsAccessibilityService.h"
 #endif
+#include "SoftwareVsyncSource.h"
 
 #ifdef DEBUG
 #include "nsIObserver.h"
@@ -1120,6 +1121,13 @@ public:
         RemoveVsyncObserver(this);
       mObservedVsyncDirectly = false;
     }
+
+    if (mObservedHMD) {
+      //mObservedHMD->RemoveVsyncObserver(this);
+      mTemporarySoftwareSource->GetGlobalDisplay().RemoveVsyncObserver(this);
+      mTemporarySoftwareSource = nullptr;
+      mObservedHMD = nullptr;
+    }
   }
 
   void ObserveWidget(nsIWidget *aWidget) {
@@ -1160,6 +1168,20 @@ public:
     mObservedVsyncDirectly = true;
   }
 
+  void ObserveHMD(gfx::VRHMDInfo *aHMD) {
+    if (mObservedHMD == aHMD)
+      return;
+
+    printf_stderr("ObserveHMD rate: %f [previous: %p %p %d]\n", aHMD->RefreshInterval(), mObservedWidget, mObservedVsyncChild.get(), mObservedVsyncDirectly);
+
+    Unobserve();
+
+    mTemporarySoftwareSource = new SoftwareVsyncSource(aHMD->RefreshInterval());
+    mTemporarySoftwareSource->GetGlobalDisplay().AddVsyncObserver(this);
+
+    mObservedHMD = aHMD;
+  }
+
   void Destroy() {
     Unobserve();
     mWidget = nullptr;
@@ -1175,8 +1197,11 @@ protected:
   nsBaseWidget *mWidget;
   // XXX can this be a bare pointer?
   nsIWidget* mObservedWidget;
-  nsRefPtr<mozilla::layout::VsyncChild> mObservedVsyncChild;
+  nsRefPtr<layout::VsyncChild> mObservedVsyncChild;
+  nsRefPtr<gfx::VRHMDInfo> mObservedHMD;
   bool mObservedVsyncDirectly;
+
+  nsRefPtr<SoftwareVsyncSource> mTemporarySoftwareSource;
 };
 
 /* static */ void
@@ -1199,12 +1224,6 @@ nsBaseWidget::UpdateVsyncObserver()
     printf_stderr("nsBaseWidget::UpdateVsyncObserver Hardware vsync disabled!\n");
     return;
   }
-
-  // XXX this is a hack to avoid recreating this, but we need to create
-  // this in a better place so that we have the option to recreate it
-  // sanely
-  if (mIncomingVsyncObserver)
-    return;
 
   if (!mIncomingVsyncObserver) {
     mIncomingVsyncObserver = new VsyncForwardingObserver(this);
@@ -2064,6 +2083,24 @@ void
 nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
 {
   mHMD = aHMD;
+
+  printf_stderr("%p SetAttachedHMD %p\n", this, aHMD);
+
+  if (GetVsyncRootWidget() != this) {
+    GetVsyncRootWidget()->SetAttachedHMD(aHMD);
+    return;
+  }
+
+  if (aHMD) {
+    if (mIncomingVsyncObserver) {
+      mIncomingVsyncObserver->ObserveHMD(aHMD);
+    }
+  } else {
+    // only update it if we had it before
+    if (mIncomingVsyncObserver) {
+      UpdateVsyncObserver();
+    }
+  }
 }
 
 mozilla::gfx::VRHMDInfo*

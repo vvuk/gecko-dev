@@ -6477,6 +6477,7 @@ MakeWidgetFullscreen(nsGlobalWindow* aWindow, gfx::VRHMDInfo* aHMD,
                                    widget, screen, transitionData);
     task->Run();
   }
+  widget->SetAttachedHMD(aHMD);
   return true;
 }
 
