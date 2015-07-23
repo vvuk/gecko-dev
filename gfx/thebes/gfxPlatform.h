@@ -670,6 +670,12 @@ protected:
     }
 
     /**
+     * Initialized software vsync; can be overriden by the platform, but a generic
+     * timer-based impl exists.
+     */
+    virtual already_AddRefed<mozilla::gfx::VsyncSource> CreateSoftwareVsyncSource();
+
+    /**
      * Initialise the preferred and fallback canvas backends
      * aBackendBitmask specifies the backends which are acceptable to the caller.
      * The backend used is determined by aBackendBitmask and the order specified

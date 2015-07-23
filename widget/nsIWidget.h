@@ -504,7 +504,18 @@ class nsIWidget : public nsISupports {
     virtual float GetDPI() = 0;
 
     /**
-     * Add or remove a vsync observer for this widget's vsync signal
+     * Add or remove a vsync observer for this widget's vsync signal.
+     * These calls are safe to call from any thread.  The vsync
+     * notification may also arrive on any thread -- if your observer
+     * needs to execute on the main thread, make sure it forwards an
+     * event to the main thread.  It is also safe to add/remove
+     * observers from a vsync observer callback.
+     *
+     * AddVsyncObserver returns true if the observer was successfully added;
+     * false if it fails.
+     *
+     * RemoveVsyncObserver returns true if the observer was found and removed;
+     * false if it was not in the list.
      */
     virtual bool AddVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }
     virtual bool RemoveVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }

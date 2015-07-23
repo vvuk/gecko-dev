@@ -160,6 +160,8 @@ public:
     aNewTimer->mLastFireTime = mLastFireTime;
   }
 
+  virtual void Destroy() { }
+
 protected:
   virtual void StartTimer() = 0;
   virtual void StopTimer() = 0;
@@ -298,6 +300,7 @@ public:
   WidgetVsyncRefreshDriverTimer(nsIWidget *aWidget)
     : mWidget(aWidget)
     , mRefreshTickLock("WidgetVsync RefreshTickLock")
+    , mProcessedVsync(true)
   {
     MOZ_ASSERT(NS_IsMainThread());
 
@@ -308,6 +311,18 @@ public:
   nsIWidget* GetWidget() const { return mWidget; }
 
 protected:
+  // This inner observer class breaks a ref cycle -- the widget will
+  // hold a ref to it in its list of vsync observers, and the
+  // RefreshDriverTimer will hold a ref to it as its inner observer.
+  // When the RefreshDriverTimer is destroyed due to its refcount
+  // going to 0, it can do proper cleanup and remove the inner
+  // observer from the widget's observer list.
+  //
+  // If this were all in one class (if WidgetVsyncRefreshDriverTimer were
+  // to inherit from both RefreshDriverTimer and VsyncObserver), the WVRDT
+  // would never be destroyed because the widget would own a ref to it in
+  // its observers list, and we'd never have a place to remove it unless
+  // StopTimer were explicitly called before all other refs to it went away.
   class InnerVsyncObserver : public VsyncObserver {
   public:
     InnerVsyncObserver(WidgetVsyncRefreshDriverTimer *aTimer)
@@ -351,15 +366,15 @@ protected:
 
   ~WidgetVsyncRefreshDriverTimer()
   {
-    // Don't do this!  The widget will hold a ref to this in its list,
-    // so this can never be destroyed while we're in the observer list.
-    // We should really hold weak refs in the widget code.
-    //mWidget->RemoveVsyncObserver(this);
+    if (mWidget) {
+      mWidget->RemoveVsyncObserver(mInnerObserver);
+      mWidget = nullptr;
+    }
+
     if (mInnerObserver) {
       mInnerObserver->mTimer = nullptr;
       mInnerObserver = nullptr;
     }
-    mWidget = nullptr;
   }
 
   void TickRefreshDriverWithMostRecent()

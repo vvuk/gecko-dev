@@ -2336,6 +2336,13 @@ gfxPlatform::CreateHardwareVsyncSource()
   return softwareVsync.forget();
 }
 
+already_AddRefed<mozilla::gfx::VsyncSource>
+gfxPlatform::CreateSoftwareVsyncSource()
+{
+  nsRefPtr<mozilla::gfx::VsyncSource> softwareVsync = new SoftwareVsyncSource();
+  return softwareVsync.forget();
+}
+
 /* static */ bool
 gfxPlatform::IsInLayoutAsapMode()
 {
