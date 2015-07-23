@@ -1230,10 +1230,12 @@ nsBaseWidget::UpdateVsyncObserver()
   }
 
   if (XRE_IsParentProcess()) {
-    // the RefreshTimer vsync dispatcher conveniently acts like what we want here
-    // XXX replace this with a generic vsync source thing
+    // if we're the parent process, and we're a toplevel widget, then
+    // just listen to platform vsync directly.
+    // XXX this should be observing vsync for the display this widget is on!
     mIncomingVsyncObserver->ObserveVsyncDirectly();
   } else {
+    // else, we're a child process; use PBackground to get a VsyncChild to listen to
     PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
     if (backgroundChild) {
       // If we already have PBackgroundChild, create the child VsyncRefreshDriverTimer here.

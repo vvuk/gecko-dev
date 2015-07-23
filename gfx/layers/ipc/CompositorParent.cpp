@@ -288,7 +288,6 @@ CompositorVsyncScheduler::CompositorVsyncScheduler(CompositorParent* aCompositor
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(aWidget != nullptr);
   mVsyncObserver = new Observer(this);
-  mCompositorWidget = aWidget;
 #ifdef MOZ_WIDGET_GONK
   GeckoTouchDispatcher::GetInstance()->SetCompositorVsyncScheduler(this);
 #endif
@@ -303,12 +302,13 @@ CompositorVsyncScheduler::~CompositorVsyncScheduler()
 {
   MOZ_ASSERT(!mIsObservingVsync);
   MOZ_ASSERT(!mVsyncObserver);
+  // just in case we somehow got destroyed without a Destroy() call
+  if (mVsyncObserver) {
+    UnobserveVsync();
+    mVsyncObserver->Destroy();
+    mVsyncObserver = nullptr;
+  }
   mCompositorParent = nullptr;
-  // just in case
-  UnobserveVsync();
-  mVsyncObserver->Destroy();
-  mVsyncObserver = nullptr;
-  mCompositorWidget = nullptr;
 }
 
 void
@@ -316,8 +316,10 @@ CompositorVsyncScheduler::Destroy()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
   UnobserveVsync();
-  mVsyncObserver->Destroy();
-  mVsyncObserver = nullptr;
+  if (mVsyncObserver) {
+    mVsyncObserver->Destroy();
+    mVsyncObserver = nullptr;
+  }
   CancelCurrentSetNeedsCompositeTask();
   CancelCurrentCompositeTask();
 }
@@ -464,16 +466,14 @@ CompositorVsyncScheduler::NeedsComposite()
 void
 CompositorVsyncScheduler::ObserveVsync()
 {
-  MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  mCompositorWidget->AddVsyncObserver(mVsyncObserver);
+  mCompositorParent->GetWidget()->AddVsyncObserver(mVsyncObserver);
   mIsObservingVsync = true;
 }
 
 void
 CompositorVsyncScheduler::UnobserveVsync()
 {
-  MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  mCompositorWidget->RemoveVsyncObserver(mVsyncObserver);
+  mCompositorParent->GetWidget()->RemoveVsyncObserver(mVsyncObserver);
   mIsObservingVsync = false;
 }
 
