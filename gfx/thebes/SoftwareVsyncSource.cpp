@@ -1,4 +1,4 @@
-/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 2 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -9,19 +9,22 @@
 #include "gfxPlatform.h"
 #include "nsThreadUtils.h"
 
+using namespace mozilla;
+
 SoftwareDisplay::SoftwareDisplay(const nsID& aDisplayID, double aInterval)
   : VsyncDisplay(aDisplayID)
   , mCurrentVsyncTask(nullptr)
   , mVsyncEnabled(false)
 {
-  // Mimic 60 fps
   MOZ_ASSERT(NS_IsMainThread());
   mVsyncRate = mozilla::TimeDuration::FromMilliseconds(aInterval);
   mVsyncThread = new base::Thread("SoftwareVsyncThread");
   MOZ_RELEASE_ASSERT(mVsyncThread->Start(), "Could not start software vsync thread");
 }
 
-SoftwareDisplay::~SoftwareDisplay() {}
+SoftwareDisplay::~SoftwareDisplay()
+{
+}
 
 void
 SoftwareDisplay::EnableVsync()
@@ -96,7 +99,9 @@ SoftwareDisplay::NotifyVsync(mozilla::TimeStamp aVsyncTimestamp)
 
   // Prevent skew by still scheduling based on the original
   // vsync timestamp
-  ScheduleNextVsync(aVsyncTimestamp);
+  if (mVsyncEnabled) {
+    ScheduleNextVsync(aVsyncTimestamp);
+  }
 }
 
 void
@@ -123,7 +128,10 @@ void
 SoftwareDisplay::Shutdown()
 {
   MOZ_ASSERT(NS_IsMainThread());
-  DisableVsync();
-  mVsyncThread->Stop();
-  delete mVsyncThread;
+  if (mVsyncThread) {
+    DisableVsync();
+    mVsyncThread->Stop();
+    delete mVsyncThread;
+    mVsyncThread = nullptr;
+  }
 }

@@ -1107,12 +1107,15 @@ public:
     if (mObservedVsyncDirectly) {
       MOZ_ASSERT(XRE_IsParentProcess());
       mObservedDisplay->RemoveVsyncObserver(this);
+      mObservedDisplay = nullptr;
       mObservedVsyncDirectly = false;
     }
 
     if (mObservedHMD) {
       mObservedDisplay->RemoveVsyncObserver(this);
       mObservedDisplay = nullptr;
+      mObservedSoftwareDisplayForShutdown->Shutdown();
+      mObservedSoftwareDisplayForShutdown = nullptr;
       mObservedHMD = nullptr;
     }
   }
@@ -1158,13 +1161,12 @@ public:
     if (mObservedHMD == aHMD)
       return;
 
-    printf_stderr("ObserveHMD rate: %f [previous: %p %p %d]\n", aHMD->RefreshInterval(), mObservedWidget, mObservedVsyncChild.get(), mObservedVsyncDirectly);
-
     Unobserve();
 
     // XXX we create this here but we should be looking it up.  We don't register it
     // since we're just going to use it ourselves only for now.
-    mObservedDisplay = new SoftwareDisplay(aHMD->GetDisplayID(), aHMD->RefreshInterval());
+    mObservedSoftwareDisplayForShutdown = new SoftwareDisplay(aHMD->GetDisplayID(), aHMD->RefreshInterval());
+    mObservedDisplay = mObservedSoftwareDisplayForShutdown;
     mObservedDisplay->AddVsyncObserver(this);
 
     mObservedHMD = aHMD;
@@ -1189,6 +1191,8 @@ protected:
   nsRefPtr<gfx::VRHMDInfo> mObservedHMD;
   bool mObservedVsyncDirectly;
   nsRefPtr<gfx::VsyncDisplay> mObservedDisplay;
+  // We need to call Shutdown on SoftwareDisplays for proper cleanup
+  nsRefPtr<SoftwareDisplay> mObservedSoftwareDisplayForShutdown;
 };
 
 /* static */ void
@@ -1355,7 +1359,6 @@ void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
     mLayerManager = nullptr;
     mCompositorChild = nullptr;
     mCompositorParent = nullptr;
-    mCompositorVsyncDispatcher = nullptr;
     return;
   }
 
