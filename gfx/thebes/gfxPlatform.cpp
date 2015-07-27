@@ -2328,19 +2328,20 @@ gfxPlatform::UsesOffMainThreadCompositing()
   return result;
 }
 
-already_AddRefed<mozilla::gfx::VsyncSource>
+already_AddRefed<VsyncSource>
 gfxPlatform::CreateHardwareVsyncSource()
 {
   NS_WARNING("Hardware Vsync support not yet implemented. Falling back to software timers");
-  nsRefPtr<mozilla::gfx::VsyncSource> softwareVsync = new SoftwareVsyncSource();
-  return softwareVsync.forget();
+  return CreateSoftwareVsyncSource();
 }
 
-already_AddRefed<mozilla::gfx::VsyncSource>
+already_AddRefed<VsyncSource>
 gfxPlatform::CreateSoftwareVsyncSource()
 {
-  nsRefPtr<mozilla::gfx::VsyncSource> softwareVsync = new SoftwareVsyncSource();
-  return softwareVsync.forget();
+  nsRefPtr<SoftwareDisplay> display = new SoftwareDisplay(VsyncSource::kGlobalDisplayID);
+  nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
+  vsyncSource->RegisterDisplay(display);
+  return vsyncSource.forget();
 }
 
 /* static */ bool

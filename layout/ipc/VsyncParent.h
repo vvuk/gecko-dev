@@ -17,6 +17,7 @@ namespace mozilla {
 
 namespace gfx {
 class VsyncSource;
+class VsyncDisplay;
 } // namespace gfx
 
 namespace ipc {
@@ -34,7 +35,7 @@ class VsyncParent final : public PVsyncParent,
   friend class mozilla::ipc::BackgroundParentImpl;
 
 private:
-  static already_AddRefed<VsyncParent> Create();
+  static already_AddRefed<VsyncParent> Create(const nsID& aDisplayID);
 
   VsyncParent();
   virtual ~VsyncParent();
@@ -50,7 +51,7 @@ private:
   bool mObservingVsync;
   bool mDestroyed;
   nsCOMPtr<nsIThread> mBackgroundThread;
-  nsRefPtr<gfx::VsyncSource> mVsyncSource; // XXX should be a VsyncSource::Display once we refcount those
+  nsRefPtr<gfx::VsyncDisplay> mVsyncDisplay;
 };
 
 } // namespace layout

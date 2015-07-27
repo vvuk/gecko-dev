@@ -1046,18 +1046,19 @@ class VsyncChildCreateCallback final : public nsIIPCBackgroundChildCreateCallbac
   NS_DECL_ISUPPORTS
 
 public:
-  VsyncChildCreateCallback(nsBaseWidget *aWidget)
-    : mWidget(aWidget)
+  VsyncChildCreateCallback(const nsID& aDisplayID, nsBaseWidget *aWidget)
+    : mDisplayID(aDisplayID)
+    , mWidget(aWidget)
   {
     MOZ_ASSERT(NS_IsMainThread());
   }
 
-  static void CreateVsyncActor(PBackgroundChild* aPBackgroundChild, nsBaseWidget *aWidget)
+  static void CreateVsyncActor(PBackgroundChild* aPBackgroundChild, const nsID& aDisplayID, nsBaseWidget *aWidget)
   {
     MOZ_ASSERT(NS_IsMainThread());
     MOZ_ASSERT(aPBackgroundChild);
 
-    layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(-1);
+    layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(aDisplayID);
     layout::VsyncChild* child = static_cast<layout::VsyncChild*>(actor);
 
     nsBaseWidget::PVsyncActorCreated(aWidget, child);
@@ -1070,7 +1071,7 @@ protected:
   {
     MOZ_ASSERT(NS_IsMainThread());
     MOZ_ASSERT(aPBackgroundChild);
-    CreateVsyncActor(aPBackgroundChild, mWidget);
+    CreateVsyncActor(aPBackgroundChild, mDisplayID, mWidget);
   }
 
   virtual void ActorFailed() override
@@ -1079,6 +1080,7 @@ protected:
     MOZ_CRASH("Failed To Create VsyncChild Actor");
   }
 
+  nsID mDisplayID;
   nsRefPtr<nsBaseWidget> mWidget;
 }; // VsyncChildCreateCallback
 NS_IMPL_ISUPPORTS(VsyncChildCreateCallback, nsIIPCBackgroundChildCreateCallback)
@@ -1114,18 +1116,13 @@ public:
 
     if (mObservedVsyncDirectly) {
       MOZ_ASSERT(XRE_IsParentProcess());
-      
-      gfxPlatform::GetPlatform()->
-        GetHardwareVsync()->
-        GetGlobalDisplay().
-        RemoveVsyncObserver(this);
+      mObservedDisplay->RemoveVsyncObserver(this);
       mObservedVsyncDirectly = false;
     }
 
     if (mObservedHMD) {
-      //mObservedHMD->RemoveVsyncObserver(this);
-      mTemporarySoftwareSource->GetGlobalDisplay().RemoveVsyncObserver(this);
-      mTemporarySoftwareSource = nullptr;
+      mObservedDisplay->RemoveVsyncObserver(this);
+      mObservedDisplay = nullptr;
       mObservedHMD = nullptr;
     }
   }
@@ -1161,10 +1158,9 @@ public:
 
     // the RefreshTimer vsync dispatcher conveniently acts like what we want here
     // XXX replace this with a generic vsync source thing
-    gfxPlatform::GetPlatform()->
-      GetHardwareVsync()->
-      GetGlobalDisplay().
-      AddVsyncObserver(this);
+    mObservedDisplay =
+      gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay();
+    mObservedDisplay->AddVsyncObserver(this);
     mObservedVsyncDirectly = true;
   }
 
@@ -1176,8 +1172,10 @@ public:
 
     Unobserve();
 
-    mTemporarySoftwareSource = new SoftwareVsyncSource(aHMD->RefreshInterval());
-    mTemporarySoftwareSource->GetGlobalDisplay().AddVsyncObserver(this);
+    // XXX we create this here but we should be looking it up.  We don't register it
+    // since we're just going to use it ourselves only for now.
+    mObservedDisplay = new SoftwareDisplay(aHMD->GetDisplayID(), aHMD->RefreshInterval());
+    mObservedDisplay->AddVsyncObserver(this);
 
     mObservedHMD = aHMD;
   }
@@ -1200,8 +1198,7 @@ protected:
   nsRefPtr<layout::VsyncChild> mObservedVsyncChild;
   nsRefPtr<gfx::VRHMDInfo> mObservedHMD;
   bool mObservedVsyncDirectly;
-
-  nsRefPtr<SoftwareVsyncSource> mTemporarySoftwareSource;
+  nsRefPtr<gfx::VsyncDisplay> mObservedDisplay;
 };
 
 /* static */ void
@@ -1246,13 +1243,16 @@ nsBaseWidget::UpdateVsyncObserver()
     mIncomingVsyncObserver->ObserveVsyncDirectly();
   } else {
     // else, we're a child process; use PBackground to get a VsyncChild to listen to
+
+    // XXX the vsync actor should be created directly on the vsync observer forwarder;
+    // the basewidget shouldn't care about it at all.
     PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
     if (backgroundChild) {
       // If we already have PBackgroundChild, create the child VsyncRefreshDriverTimer here.
-      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, this);
+      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, gfx::VsyncSource::kGlobalDisplayID, this);
     } else {
       // set up the callback
-      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(this);
+      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(gfx::VsyncSource::kGlobalDisplayID, this);
       if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
         MOZ_CRASH("PVsync actor create failed!");
       }

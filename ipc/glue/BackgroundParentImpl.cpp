@@ -255,13 +255,13 @@ BackgroundParentImpl::DeallocPNuwaParent(PNuwaParent *aActor)
 }
 
 BackgroundParentImpl::PVsyncParent*
-BackgroundParentImpl::AllocPVsyncParent(const int32_t& aDisplayIdentifier)
+BackgroundParentImpl::AllocPVsyncParent(const nsID& aDisplayIdentifier)
 {
   AssertIsInMainProcess();
   AssertIsOnBackgroundThread();
 
   nsRefPtr<mozilla::layout::VsyncParent> actor =
-      mozilla::layout::VsyncParent::Create();
+      mozilla::layout::VsyncParent::Create(aDisplayIdentifier);
   // There still has one ref-count after return, and it will be released in
   // DeallocPVsyncParent().
   return actor.forget().take();

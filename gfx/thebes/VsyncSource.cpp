@@ -12,19 +12,28 @@
 namespace mozilla {
 namespace gfx {
 
-VsyncSource::Display::Display()
-  : mObserversMonitor("VsyncSource Display observers mutation monitor")
+/* static */ const nsID VsyncSource::kGlobalDisplayID =
+  { 0xd87dab51, 0x85cd, 0x475b, { 0x9a, 0x9c, 0xb7, 0x48, 0x3a, 0x46, 0x2c, 0xca } };
+
+VsyncSource::VsyncSource()
+  : mDisplaysMonitor("VsyncSource displays monitor")
+{
+}
+
+VsyncDisplay::VsyncDisplay(const nsID& aID)
+  : mID(aID)
+  , mObserversMonitor("VsyncSource Display observers mutation monitor")
 {
   MOZ_ASSERT(NS_IsMainThread());
 }
 
-VsyncSource::Display::~Display()
+VsyncDisplay::~VsyncDisplay()
 {
   MOZ_ASSERT(NS_IsMainThread());
 }
 
 void
-VsyncSource::Display::AddVsyncObserver(VsyncObserver *aObserver)
+VsyncDisplay::AddVsyncObserver(VsyncObserver *aObserver)
 {
   { // scope lock
     MonitorAutoLock lock(mObserversMonitor);
@@ -37,7 +46,7 @@ VsyncSource::Display::AddVsyncObserver(VsyncObserver *aObserver)
 }
 
 bool
-VsyncSource::Display::RemoveVsyncObserver(VsyncObserver *aObserver)
+VsyncDisplay::RemoveVsyncObserver(VsyncObserver *aObserver)
 {
   bool found = false;
   { // scope lock
@@ -51,7 +60,7 @@ VsyncSource::Display::RemoveVsyncObserver(VsyncObserver *aObserver)
 }
 
 void
-VsyncSource::Display::NotifyVsync(TimeStamp aVsyncTimestamp)
+VsyncDisplay::NotifyVsync(TimeStamp aVsyncTimestamp)
 {
   // Called on the vsync thread
   MonitorAutoLock lock(mObserversMonitor);
@@ -61,7 +70,7 @@ VsyncSource::Display::NotifyVsync(TimeStamp aVsyncTimestamp)
 }
 
 void
-VsyncSource::Display::UpdateVsyncStatus()
+VsyncDisplay::UpdateVsyncStatus()
 {
   // WARNING: This function SHOULD NOT BE CALLED WHILE HOLDING LOCKS
   // NotifyVsync grabs a lock to dispatch vsync events
@@ -83,6 +92,56 @@ VsyncSource::Display::UpdateVsyncStatus()
   if (IsVsyncEnabled() != enableVsync) {
     NS_WARNING("Vsync status did not change.");
   }
+}
+
+void
+VsyncSource::RegisterDisplay(VsyncDisplay* aDisplay)
+{
+  const nsID& id = aDisplay->ID();
+  
+  MonitorAutoLock lock(mDisplaysMonitor);
+
+  // check if it already exists
+  for (size_t i = 0; i < mDisplays.Length(); ++i) {
+    if (id == mDisplays[i]->ID()) {
+      MOZ_ASSERT(aDisplay == mDisplays[i], "RegisterDisplay: different display already registered with same ID!");
+
+      NS_WARNING("RegisterDisplay: display already registered!");
+      break;
+    }
+  }
+
+  mDisplays.AppendElement(aDisplay);
+}
+
+void
+VsyncSource::UnregisterDisplay(const nsID& aDisplayID)
+{
+  MonitorAutoLock lock(mDisplaysMonitor);
+
+  for (size_t i = 0; i < mDisplays.Length(); ++i) {
+    if (aDisplayID == mDisplays[i]->ID()) {
+      mDisplays.RemoveElementAt(i);
+      return;
+    }
+  }
+  
+  NS_WARNING("UnregisterDisplay: tried to unregister display that wasn't registered!");
+}
+
+already_AddRefed<VsyncDisplay>
+VsyncSource::GetDisplay(const nsID& aDisplayID)
+{
+  MonitorAutoLock lock(mDisplaysMonitor);
+
+  for (size_t i = 0; i < mDisplays.Length(); ++i) {
+    if (aDisplayID == mDisplays[i]->ID()) {
+      nsRefPtr<VsyncDisplay> dpy = mDisplays[i];
+      return dpy.forget();
+    }
+  }
+
+  return nullptr;
 }
 
 } //namespace gfx
