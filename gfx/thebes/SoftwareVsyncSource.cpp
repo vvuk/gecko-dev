@@ -9,21 +9,9 @@
 #include "gfxPlatform.h"
 #include "nsThreadUtils.h"
 
-SoftwareVsyncSource::SoftwareVsyncSource(double aInterval)
-{
-  MOZ_ASSERT(NS_IsMainThread());
-  mGlobalDisplay = new SoftwareDisplay(aInterval);
-}
-
-SoftwareVsyncSource::~SoftwareVsyncSource()
-{
-  MOZ_ASSERT(NS_IsMainThread());
-  mGlobalDisplay->Shutdown();
-  mGlobalDisplay = nullptr;
-}
-
-SoftwareDisplay::SoftwareDisplay(double aInterval)
-  : mCurrentVsyncTask(nullptr)
+SoftwareDisplay::SoftwareDisplay(const nsID& aDisplayID, double aInterval)
+  : VsyncDisplay(aDisplayID)
+  , mCurrentVsyncTask(nullptr)
   , mVsyncEnabled(false)
 {
   // Mimic 60 fps
@@ -104,7 +92,7 @@ SoftwareDisplay::NotifyVsync(mozilla::TimeStamp aVsyncTimestamp)
     displayVsyncTime = now;
   }
 
-  Display::NotifyVsync(displayVsyncTime);
+  VsyncDisplay::NotifyVsync(displayVsyncTime);
 
   // Prevent skew by still scheduling based on the original
   // vsync timestamp

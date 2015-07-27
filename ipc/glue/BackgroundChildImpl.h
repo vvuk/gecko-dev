@@ -81,7 +81,7 @@ protected:
   DeallocPCamerasChild(PCamerasChild* aActor) override;
 
   virtual PVsyncChild*
-  AllocPVsyncChild(const int32_t& aDisplayIdentifier) override;
+  AllocPVsyncChild(const nsID& aDisplayIdentifier) override;
 
   virtual bool
   DeallocPVsyncChild(PVsyncChild* aActor) override;

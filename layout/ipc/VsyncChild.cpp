@@ -11,7 +11,7 @@
 namespace mozilla {
 namespace layout {
 
-VsyncChild::VsyncChild(int32_t aDisplayIdentifier)
+VsyncChild::VsyncChild(const nsID& aDisplayIdentifier)
   : mDisplayIdentifier(aDisplayIdentifier)
   , mObservingVsync(false)
   , mIsShutdown(false)

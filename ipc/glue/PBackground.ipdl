@@ -60,7 +60,8 @@ parent:
 
   PBackgroundIDBFactory(LoggingInfo loggingInfo);
 
-  PVsync(int32_t aSomeKindOfScreenIdentifierPassZeroForNow);
+  // this Display ID can be mozilla::gfx::VsyncSource::kGlobalDisplay
+  PVsync(nsID aDisplayID);
 
   PCameras();
 
