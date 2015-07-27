@@ -367,7 +367,7 @@ protected:
   {
     if (mWidget) {
       mWidget->RemoveVsyncObserver(mInnerObserver);
-      mWidget = nullptr;
+      NS_ReleaseOnMainThread(mWidget);
     }
 
     if (mInnerObserver) {
@@ -436,10 +436,7 @@ protected:
   bool mProcessedVsync;
   nsRefPtr<InnerVsyncObserver> mInnerObserver;
 
-  // This is a bare pointer!  Widget is not thread-safe, so we shouldn't
-  // be addrefing or deleting them on a random thread, like we might
-  // here.  
-  nsIWidget* mWidget;
+  nsCOMPtr<nsIWidget> mWidget;
 }; // WidgetVsyncRefreshDriverTimer
 
 /*
