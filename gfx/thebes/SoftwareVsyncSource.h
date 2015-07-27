@@ -18,8 +18,6 @@ class CancelableTask;
 
 class SoftwareDisplay final : public mozilla::gfx::VsyncDisplay
 {
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(SoftwareDisplay)
-
 public:
   SoftwareDisplay(const nsID& aDisplayID,
                   double aInterval = 1000.0 / 60.0);
