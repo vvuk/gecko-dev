@@ -71,6 +71,13 @@ VsyncDisplay::OnVsync(TimeStamp aVsyncTimestamp)
 void
 VsyncDisplay::UpdateVsyncStatus()
 {
+  // always dispatch this to the Main thread, because
+  // EnableVsync/DisableVsync can only be called on it
+  if (!NS_IsMainThread()) {
+    NS_DispatchToMainThread(NS_NewRunnableMethod(this, &VsyncDisplay::UpdateVsyncStatus));
+    return;
+  }
+
   // WARNING: This function SHOULD NOT BE CALLED WHILE HOLDING LOCKS
   // NotifyVsync grabs a lock to dispatch vsync events
   // When disabling vsync, we wait for the underlying thread to stop on some platforms

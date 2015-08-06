@@ -936,8 +936,14 @@ TabParent::Show(const ScreenIntSize& size, bool aParentIsActive)
         }
     }
 
+    nsCOMPtr<nsIWidget> widget = GetWidget();
+    nsID vsyncDisplay = gfx::VsyncSource::kGlobalDisplayID;
+    if (widget) {
+      vsyncDisplay = widget->GetVsyncDisplayIdentifier();
+    }
+
     TryCacheDPIAndScale();
-    ShowInfo info(EmptyString(), false, false, mDPI, mDefaultScale.scale);
+    ShowInfo info(EmptyString(), false, false, mDPI, mDefaultScale.scale, vsyncDisplay);
 
     if (mFrameElement) {
       nsAutoString name;
@@ -946,7 +952,7 @@ TabParent::Show(const ScreenIntSize& size, bool aParentIsActive)
         mFrameElement->HasAttr(kNameSpaceID_None, nsGkAtoms::allowfullscreen) ||
         mFrameElement->HasAttr(kNameSpaceID_None, nsGkAtoms::mozallowfullscreen);
       bool isPrivate = mFrameElement->HasAttr(kNameSpaceID_None, nsGkAtoms::mozprivatebrowsing);
-      info = ShowInfo(name, allowFullscreen, isPrivate, mDPI, mDefaultScale.scale);
+      info = ShowInfo(name, allowFullscreen, isPrivate, mDPI, mDefaultScale.scale, vsyncDisplay);
     }
 
     unused << SendShow(size, info, textureFactoryIdentifier,

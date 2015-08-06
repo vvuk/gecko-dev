@@ -95,7 +95,9 @@ public:
   // Large parts of Gecko assume TimeStamps should not be in the future such as animations
   virtual void OnVsync(TimeStamp aVsyncTimestamp);
 
-  // These should all only be called on the main thread
+  // These must only be called on the main thread.  You should not need
+  // to call these directly; adding or removing a vsync observer will
+  // enable or disable vsync as necessary.
   virtual void EnableVsync() = 0;
   virtual void DisableVsync() = 0;
   virtual bool IsVsyncEnabled() = 0;

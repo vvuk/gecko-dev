@@ -90,6 +90,7 @@ struct ShowInfo
   bool isPrivate;
   float dpi;
   double defaultScale;
+  nsID vsyncSourceID;
 };
 
 struct FrameScriptInfo
