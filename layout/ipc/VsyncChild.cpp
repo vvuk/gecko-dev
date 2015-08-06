@@ -4,8 +4,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "VsyncChild.h"
+#include "VsyncSource.h"
 
-#include "mozilla/VsyncDispatcher.h"
 #include "nsThreadUtils.h"
 
 namespace mozilla {
@@ -67,7 +67,7 @@ VsyncChild::RecvNotify(const TimeStamp& aVsyncTimestamp)
 }
 
 void
-VsyncChild::SetVsyncObserver(VsyncObserver* aVsyncObserver)
+VsyncChild::SetVsyncObserver(gfx::VsyncObserver* aVsyncObserver)
 {
   MOZ_ASSERT(NS_IsMainThread());
   mObserver = aVsyncObserver;

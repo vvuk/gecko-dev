@@ -2693,7 +2693,7 @@ class D3DVsyncDisplay final : public VsyncDisplay
         // Large parts of gecko assume that the refresh driver timestamp
         // must be <= Now() and cannot be in the future.
         MOZ_ASSERT(vsync <= TimeStamp::Now());
-        VsyncDisplay::NotifyVsync(vsync);
+        VsyncDisplay::OnVsync(vsync);
 
         // DwmComposition can be dynamically enabled/disabled
         // so we have to check every time that it's available.

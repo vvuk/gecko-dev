@@ -25,7 +25,7 @@ public:
   virtual void DisableVsync() override;
   virtual bool IsVsyncEnabled() override;
   bool IsInSoftwareVsyncThread();
-  virtual void NotifyVsync(mozilla::TimeStamp aVsyncTimestamp) override;
+  virtual void OnVsync(mozilla::TimeStamp aVsyncTimestamp) override;
   void ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp);
   void Shutdown();
 

@@ -12,7 +12,9 @@
 
 namespace mozilla {
 
+namespace gfx {
 class VsyncObserver;
+} // namespace gfx;
 
 namespace ipc {
 class BackgroundChildImpl;
@@ -37,7 +39,7 @@ public:
   bool SendUnobserve();
 
   // Bind a VsyncObserver into VsyncChild after ipc channel connected.
-  void SetVsyncObserver(VsyncObserver* aVsyncObserver);
+  void SetVsyncObserver(gfx::VsyncObserver* aVsyncObserver);
 
   const nsID& DisplayIdentifier() const { return mDisplayIdentifier; }
 
@@ -53,7 +55,7 @@ private:
   bool mIsShutdown;
 
   // The content side vsync observer.
-  nsRefPtr<VsyncObserver> mObserver;
+  nsRefPtr<gfx::VsyncObserver> mObserver;
 };
 
 } // namespace layout

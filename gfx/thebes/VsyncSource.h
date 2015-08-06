@@ -8,7 +8,7 @@
 
 #include "nsTArray.h"
 #include "mozilla/nsRefPtr.h"
-#include "mozilla/Mutex.h"
+#include "mozilla/Monitor.h"
 #include "mozilla/TimeStamp.h"
 #include "nsISupportsImpl.h"
 #include "nsID.h"
@@ -19,6 +19,25 @@ class VsyncObserver;
 namespace gfx {
 
 class VsyncDisplay;
+
+// An observer class, with a single notify method that is called when
+// vsync occurs.
+class VsyncObserver
+{
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncObserver)
+
+public:
+  // The method called when a vsync occurs. Return true if some work was done.
+  // In general, this vsync notification will occur on the hardware vsync
+  // thread from VsyncSource. But it might also be called on PVsync ipc thread
+  // if this notification is cross process. Thus all observer should check the
+  // thread model before handling the real task.
+  virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) = 0;
+
+protected:
+  VsyncObserver() {}
+  virtual ~VsyncObserver() {}
+}; // VsyncObserver
 
 // Controls how and when to enable/disable vsync. Lives as long as the
 // gfxPlatform does on the parent process
@@ -74,7 +93,7 @@ public:
   // Android: TODO
   // All platforms should normalize to the vsync that just occured.
   // Large parts of Gecko assume TimeStamps should not be in the future such as animations
-  virtual void NotifyVsync(TimeStamp aVsyncTimestamp);
+  virtual void OnVsync(TimeStamp aVsyncTimestamp);
 
   // These should all only be called on the main thread
   virtual void EnableVsync() = 0;
