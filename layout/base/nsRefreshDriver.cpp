@@ -60,7 +60,6 @@
 #include "nsIIPCBackgroundChildCreateCallback.h"
 #include "mozilla/layout/VsyncChild.h"
 #include "VsyncSource.h"
-#include "mozilla/VsyncDispatcher.h"
 #include "nsThreadUtils.h"
 #include "mozilla/unused.h"
 #include "mozilla/TimelineConsumers.h"
@@ -323,7 +322,7 @@ protected:
   // would never be destroyed because the widget would own a ref to it in
   // its observers list, and we'd never have a place to remove it unless
   // StopTimer were explicitly called before all other refs to it went away.
-  class InnerVsyncObserver : public VsyncObserver {
+  class InnerVsyncObserver : public gfx::VsyncObserver {
   public:
     InnerVsyncObserver(WidgetVsyncRefreshDriverTimer *aTimer)
       : mTimer(aTimer)

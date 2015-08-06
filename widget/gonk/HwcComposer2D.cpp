@@ -182,7 +182,7 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
     // with JellyBean.
 #if (ANDROID_VERSION == 19 || ANDROID_VERSION >= 21)
     TimeStamp vsyncTime = mozilla::TimeStamp::FromSystemTime(aVsyncTimestamp);
-    gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay().NotifyVsync(vsyncTime);
+    gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay()->OnVsync(vsyncTime);
 #else
     // If this device doesn't support vsync, this function should not be used.
     MOZ_ASSERT(false);

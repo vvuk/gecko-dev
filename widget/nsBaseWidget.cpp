@@ -46,7 +46,6 @@
 #include "GLConsts.h"
 #include "mozilla/unused.h"
 #include "VsyncSource.h"
-#include "mozilla/VsyncDispatcher.h"
 #include "mozilla/layers/APZCTreeManager.h"
 #include "mozilla/layers/APZEventState.h"
 #include "mozilla/layers/APZThreadUtils.h"
@@ -1087,7 +1086,7 @@ NS_IMPL_ISUPPORTS(VsyncChildCreateCallback, nsIIPCBackgroundChildCreateCallback)
 
 } // namespace anon
 
-class VsyncForwardingObserver final : public mozilla::VsyncObserver {
+class VsyncForwardingObserver final : public mozilla::gfx::VsyncObserver {
 public:
   VsyncForwardingObserver(nsBaseWidget *aWidget)
     : mWidget(aWidget)
@@ -1265,7 +1264,7 @@ nsBaseWidget::UpdateVsyncObserver()
 }
 
 bool
-nsBaseWidget::AddVsyncObserver(VsyncObserver *aObserver)
+nsBaseWidget::AddVsyncObserver(gfx::VsyncObserver *aObserver)
 {
   if (!gfxPrefs::HardwareVsyncEnabled()) {
     printf_stderr("nsBaseWidget::AddVsyncObserver Hardware vsync disabled!\n");
@@ -1280,7 +1279,7 @@ nsBaseWidget::AddVsyncObserver(VsyncObserver *aObserver)
 }
 
 bool
-nsBaseWidget::RemoveVsyncObserver(VsyncObserver *aObserver)
+nsBaseWidget::RemoveVsyncObserver(gfx::VsyncObserver *aObserver)
 {
   bool result;
   {
@@ -1299,7 +1298,7 @@ nsBaseWidget::RemoveVsyncObserver(VsyncObserver *aObserver)
 void
 nsBaseWidget::ForwardVsyncNotification(TimeStamp aVsyncTimestamp)
 {
-  nsTArray<nsRefPtr<VsyncObserver>> observersCopy;
+  nsTArray<nsRefPtr<gfx::VsyncObserver>> observersCopy;
   {
     //printf_stderr("%p ForwardVsyncNotification\n", this);
     MutexAutoLock lock(mVsyncObserversLock);

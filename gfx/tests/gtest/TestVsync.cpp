@@ -14,7 +14,6 @@
 #include "VsyncSource.h"
 #include "mozilla/Monitor.h"
 #include "mozilla/TimeStamp.h"
-#include "mozilla/VsyncDispatcher.h"
 
 using namespace mozilla;
 using namespace mozilla::gfx;

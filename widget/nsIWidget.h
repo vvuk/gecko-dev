@@ -61,6 +61,7 @@ namespace gfx {
 class DrawTarget;
 class SourceSurface;
 class VRHMDInfo;
+class VsyncObserver;
 } // namespace gfx
 namespace widget {
 class TextEventDispatcher;
@@ -517,8 +518,8 @@ class nsIWidget : public nsISupports {
      * RemoveVsyncObserver returns true if the observer was found and removed;
      * false if it was not in the list.
      */
-    virtual bool AddVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }
-    virtual bool RemoveVsyncObserver(mozilla::VsyncObserver *aObserver) { return false; }
+    virtual bool AddVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) { return false; }
+    virtual bool RemoveVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) { return false; }
 
     /**
      * Return the default scale factor for the window. This is the

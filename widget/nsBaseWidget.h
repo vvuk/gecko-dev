@@ -47,7 +47,9 @@ namespace layout {
 class VsyncChild;
 } // namespace layout (XXX to move from layout to gfx)
 
+namespace gfx {
 class VsyncObserver;
+} // namespace gfx
 } // namespace mozilla
 
 namespace base {
@@ -60,6 +62,7 @@ class Thread;
 #define TOUCH_INJECT_MAX_POINTS 256
 
 class VsyncForwardingObserver;
+class WidgetVsyncDisplay;
 class nsBaseWidget;
 
 // Helper class used in shutting down gfx related code.
@@ -273,8 +276,8 @@ public:
   /*
    * Vsync
    */
-  bool AddVsyncObserver(mozilla::VsyncObserver *aObserver) override;
-  bool RemoveVsyncObserver(mozilla::VsyncObserver *aObserver) override;
+  bool AddVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) override;
+  bool RemoveVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) override;
 
   static void PVsyncActorCreated(nsBaseWidget *aWidget, mozilla::layout::VsyncChild *aVsyncChild);
   
@@ -287,7 +290,7 @@ protected:
 
   nsRefPtr<mozilla::layout::VsyncChild> mVsyncChild;
   nsRefPtr<VsyncForwardingObserver> mIncomingVsyncObserver;
-  nsTArray<nsRefPtr<mozilla::VsyncObserver>> mVsyncObservers;
+  nsTArray<nsRefPtr<mozilla::gfx::VsyncObserver>> mVsyncObservers;
   mozilla::Mutex mVsyncObserversLock;
 
 public:

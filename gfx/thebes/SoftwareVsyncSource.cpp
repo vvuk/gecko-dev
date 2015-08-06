@@ -41,7 +41,7 @@ SoftwareDisplay::EnableVsync()
   }
 
   MOZ_ASSERT(IsInSoftwareVsyncThread());
-  NotifyVsync(mozilla::TimeStamp::Now());
+  OnVsync(mozilla::TimeStamp::Now());
 }
 
 void
@@ -80,7 +80,7 @@ SoftwareDisplay::IsInSoftwareVsyncThread()
 }
 
 void
-SoftwareDisplay::NotifyVsync(mozilla::TimeStamp aVsyncTimestamp)
+SoftwareDisplay::OnVsync(mozilla::TimeStamp aVsyncTimestamp)
 {
   MOZ_ASSERT(IsInSoftwareVsyncThread());
 
@@ -94,7 +94,7 @@ SoftwareDisplay::NotifyVsync(mozilla::TimeStamp aVsyncTimestamp)
     displayVsyncTime = now;
   }
 
-  VsyncDisplay::NotifyVsync(displayVsyncTime);
+  VsyncDisplay::OnVsync(displayVsyncTime);
 
   // Prevent skew by still scheduling based on the original
   // vsync timestamp
@@ -115,7 +115,7 @@ SoftwareDisplay::ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp)
   }
 
   mCurrentVsyncTask = NewRunnableMethod(this,
-      &SoftwareDisplay::NotifyVsync,
+      &SoftwareDisplay::OnVsync,
       nextVsync);
 
   mVsyncThread->message_loop()->PostDelayedTask(FROM_HERE,

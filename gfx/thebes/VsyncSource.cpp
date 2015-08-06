@@ -6,7 +6,6 @@
 #include "VsyncSource.h"
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
-#include "mozilla/VsyncDispatcher.h"
 #include "MainThreadUtils.h"
 
 namespace mozilla {
@@ -60,7 +59,7 @@ VsyncDisplay::RemoveVsyncObserver(VsyncObserver *aObserver)
 }
 
 void
-VsyncDisplay::NotifyVsync(TimeStamp aVsyncTimestamp)
+VsyncDisplay::OnVsync(TimeStamp aVsyncTimestamp)
 {
   // Called on the vsync thread
   MonitorAutoLock lock(mObserversMonitor);

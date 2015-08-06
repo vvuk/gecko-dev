@@ -18,7 +18,6 @@
 
 #include "nsTArray.h"
 #include "mozilla/Preferences.h"
-#include "mozilla/VsyncDispatcher.h"
 #include "qcms.h"
 #include "gfx2DGlue.h"
 
@@ -584,7 +583,7 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
 
   display->mPreviousTimestamp = nextVsync;
 
-  display->NotifyVsync(previousVsync);
+  display->OnVsync(previousVsync);
   return kCVReturnSuccess;
 }
 
