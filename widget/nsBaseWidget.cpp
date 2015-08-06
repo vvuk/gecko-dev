@@ -67,6 +67,10 @@
 #include "nsAccessibilityService.h"
 #endif
 #include "SoftwareVsyncSource.h"
+#include "nsIUUIDGenerator.h"
+
+PRLogModuleInfo *gVsyncLog = nullptr;
+#define VSYNC_LOG(...)  MOZ_LOG(gVsyncLog, mozilla::LogLevel::Debug, (__VA_ARGS__))
 
 #ifdef DEBUG
 #include "nsIObserver.h"
@@ -169,6 +173,10 @@ nsBaseWidget::nsBaseWidget()
 , mUseAttachedEvents(false)
 , mIMEHasFocus(false)
 {
+  if (!gVsyncLog) {
+    gVsyncLog = PR_NewLogModule("Vsync");
+  }
+
 #ifdef NOISY_WIDGET_LEAKS
   gNumWidgets++;
   printf("WIDGETS+ = %d\n", gNumWidgets);
@@ -184,6 +192,7 @@ nsBaseWidget::nsBaseWidget()
   }
 #endif
   mShutdownObserver = new WidgetShutdownObserver(this);
+  mDesiredVsyncSourceID = gfx::VsyncSource::kGlobalDisplayID;
 }
 
 NS_IMPL_ISUPPORTS(WidgetShutdownObserver, nsIObserver)
@@ -236,6 +245,7 @@ WidgetShutdownObserver::Unregister()
 void
 nsBaseWidget::Shutdown()
 {
+  ShutdownVsync();
   DestroyCompositor();
   FreeShutdownObserver();
 #if defined(XP_WIN) || defined(MOZ_WIDGET_GTK)
@@ -1176,6 +1186,23 @@ public:
     mWidget = nullptr;
   }
 
+  nsID GetObservedDisplayIdentifier() {
+    if (mObservedDisplay) {
+      return mObservedDisplay->ID();
+    }
+
+    if (mObservedWidget) {
+      return mObservedWidget->GetVsyncDisplayIdentifier();
+    }
+
+    if (mObservedVsyncChild) {
+      return mObservedVsyncChild->DisplayIdentifier();
+    }
+
+    NS_WARNING("VsyncForwardingObserver::GetObservedID -- not sure what I'm observing, returning kGlobalDisplay!");
+    return gfx::VsyncSource::kGlobalDisplayID;
+  }
+
 protected:
   virtual ~VsyncForwardingObserver() {
     Destroy();
@@ -1194,6 +1221,24 @@ protected:
   nsRefPtr<SoftwareDisplay> mObservedSoftwareDisplayForShutdown;
 };
 
+// impl for nsIWidget's generic version
+nsID
+nsIWidget::GetVsyncDisplayIdentifier()
+{
+  return gfx::VsyncSource::kGlobalDisplayID;
+}
+
+// the actual nsBaseWidget version
+nsID
+nsBaseWidget::GetVsyncDisplayIdentifier()
+{
+  if (mIncomingVsyncObserver) {
+    return mIncomingVsyncObserver->GetObservedDisplayIdentifier();
+  }
+
+  return gfx::VsyncSource::kGlobalDisplayID;
+}
+
 /* static */ void
 nsBaseWidget::PVsyncActorCreated(nsBaseWidget *aWidget, mozilla::layout::VsyncChild *aVsyncChild)
 {
@@ -1210,11 +1255,6 @@ nsBaseWidget::GetVsyncRootWidget()
 void
 nsBaseWidget::UpdateVsyncObserver()
 {
-  if (!gfxPrefs::HardwareVsyncEnabled()) {
-    printf_stderr("nsBaseWidget::UpdateVsyncObserver Hardware vsync disabled!\n");
-    return;
-  }
-
   if (!mIncomingVsyncObserver) {
     mIncomingVsyncObserver = new VsyncForwardingObserver(this);
   }
@@ -1226,6 +1266,12 @@ nsBaseWidget::UpdateVsyncObserver()
     // if we're not the root widget, then just observe the root widget which will
     // forward to our own listeners.
     mIncomingVsyncObserver->ObserveWidget(GetVsyncRootWidget());
+
+    char idstr[NSID_LENGTH];
+    mIncomingVsyncObserver->GetObservedDisplayIdentifier().ToProvidedString(idstr);
+
+    VSYNC_LOG("[%s]: Widget %p observing root widget %p (vsync ID %s)\n", XRE_IsParentProcess() ? "Parent" : "Child", this, GetVsyncRootWidget(), idstr);
+
     return;
   }
 
@@ -1234,6 +1280,11 @@ nsBaseWidget::UpdateVsyncObserver()
     // just listen to platform vsync directly.
     // XXX this should be observing vsync for the display this widget is on!
     mIncomingVsyncObserver->ObserveVsyncDirectly();
+    
+    char idstr[NSID_LENGTH];
+    mIncomingVsyncObserver->GetObservedDisplayIdentifier().ToProvidedString(idstr);
+
+    VSYNC_LOG("[Parent]: Widget %p root observing vsync ID %s\n", this, idstr);
   } else {
     // else, we're a child process; use PBackground to get a VsyncChild to listen to
 
@@ -1242,14 +1293,18 @@ nsBaseWidget::UpdateVsyncObserver()
     PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
     if (backgroundChild) {
       // If we already have PBackgroundChild, create the child VsyncRefreshDriverTimer here.
-      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, gfx::VsyncSource::kGlobalDisplayID, this);
+      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, mDesiredVsyncSourceID, this);
     } else {
       // set up the callback
-      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(gfx::VsyncSource::kGlobalDisplayID, this);
+      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(mDesiredVsyncSourceID, this);
       if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
         MOZ_CRASH("PVsync actor create failed!");
       }
     }
+
+    char idstr[NSID_LENGTH];
+    mDesiredVsyncSourceID.ToProvidedString(idstr);
+    VSYNC_LOG("[Child]: Widget %p observing vsync ID %s\n", this, idstr);
   }
 }
 
@@ -1257,7 +1312,7 @@ bool
 nsBaseWidget::AddVsyncObserver(gfx::VsyncObserver *aObserver)
 {
   if (!gfxPrefs::HardwareVsyncEnabled()) {
-    printf_stderr("nsBaseWidget::AddVsyncObserver Hardware vsync disabled!\n");
+    VSYNC_LOG("nsBaseWidget::AddVsyncObserver Hardware vsync disabled!\n");
     return false;
   }
 
@@ -1290,7 +1345,7 @@ nsBaseWidget::ForwardVsyncNotification(TimeStamp aVsyncTimestamp)
 {
   nsTArray<nsRefPtr<gfx::VsyncObserver>> observersCopy;
   {
-    //printf_stderr("%p ForwardVsyncNotification\n", this);
+    //VSYNC_LOG("%p ForwardVsyncNotification\n", this);
     MutexAutoLock lock(mVsyncObserversLock);
     observersCopy.AppendElements(mVsyncObservers);
   }
@@ -1298,6 +1353,11 @@ nsBaseWidget::ForwardVsyncNotification(TimeStamp aVsyncTimestamp)
   for (size_t i = 0; i < observersCopy.Length(); ++i) {
     observersCopy[i]->NotifyVsync(aVsyncTimestamp);
   }
+}
+
+void
+nsBaseWidget::ShutdownVsync()
+{
 }
 
 void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
@@ -2082,7 +2142,7 @@ nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
 {
   mHMD = aHMD;
 
-  printf_stderr("%p SetAttachedHMD %p\n", this, aHMD);
+  VSYNC_LOG("%p SetAttachedHMD %p\n", this, aHMD);
 
   if (GetVsyncRootWidget() != this) {
     GetVsyncRootWidget()->SetAttachedHMD(aHMD);

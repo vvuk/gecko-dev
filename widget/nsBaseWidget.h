@@ -21,6 +21,7 @@
 #include "nsIWidgetListener.h"
 #include "nsPIDOMWindow.h"
 #include "nsWeakReference.h"
+
 #include <algorithm>
 class nsIContent;
 class nsAutoRollup;
@@ -278,20 +279,24 @@ public:
    */
   bool AddVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) override;
   bool RemoveVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) override;
+  nsID GetVsyncDisplayIdentifier() override;
 
   static void PVsyncActorCreated(nsBaseWidget *aWidget, mozilla::layout::VsyncChild *aVsyncChild);
   
 protected:
   friend class VsyncForwardingObserver;
+  friend class WidgetVsyncDisplay;
 
   nsIWidget *GetVsyncRootWidget();
   void UpdateVsyncObserver();
   void ForwardVsyncNotification(mozilla::TimeStamp aVsyncTimestamp);
+  void ShutdownVsync();
 
   nsRefPtr<mozilla::layout::VsyncChild> mVsyncChild;
   nsRefPtr<VsyncForwardingObserver> mIncomingVsyncObserver;
   nsTArray<nsRefPtr<mozilla::gfx::VsyncObserver>> mVsyncObservers;
   mozilla::Mutex mVsyncObserversLock;
+  nsID mDesiredVsyncSourceID;
 
 public:
   // Should be called by derived implementations to notify on system color and
