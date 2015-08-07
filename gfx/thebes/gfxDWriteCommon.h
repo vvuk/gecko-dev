@@ -15,7 +15,6 @@
 #include "gfxFontConstants.h"
 #include "nsTArray.h"
 #include "gfxWindowsPlatform.h"
-#include "nsIUUIDGenerator.h"
 
 #include <windows.h>
 #include <dwrite.h>
