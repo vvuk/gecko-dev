@@ -2494,10 +2494,10 @@ DwmCompositionEnabled()
   return dwmEnabled;
 }
 
-class D3DVsyncDisplay final : public VsyncDisplay
+class DWMVsyncDisplay final : public VsyncDisplay
 {
   public:
-    D3DVsyncDisplay(const nsID& aDisplayID)
+    DWMVsyncDisplay(const nsID& aDisplayID)
       : VsyncDisplay(aDisplayID)
       , mVsyncEnabledLock("D3DVsyncEnabledLock")
       , mPrevVsync(TimeStamp::Now())
@@ -2522,7 +2522,7 @@ class D3DVsyncDisplay final : public VsyncDisplay
       }
 
       CancelableTask* vsyncStart = NewRunnableMethod(this,
-          &D3DVsyncDisplay::VBlankLoop);
+          &DWMVsyncDisplay::VBlankLoop);
       mVsyncThread->message_loop()->PostTask(FROM_HERE, vsyncStart);
     }
 
@@ -2556,7 +2556,7 @@ class D3DVsyncDisplay final : public VsyncDisplay
       }
 
       mVsyncThread->message_loop()->PostDelayedTask(FROM_HERE,
-          NewRunnableMethod(this, &D3DVsyncDisplay::VBlankLoop),
+          NewRunnableMethod(this, &DWMVsyncDisplay::VBlankLoop),
           delay.ToMilliseconds());
     }
 
@@ -2652,7 +2652,7 @@ class D3DVsyncDisplay final : public VsyncDisplay
     }
     
   private:
-    virtual ~D3DVsyncDisplay()
+    virtual ~DWMVsyncDisplay()
     {
       MOZ_ASSERT(NS_IsMainThread());
       DisableVsync();
@@ -2670,7 +2670,7 @@ class D3DVsyncDisplay final : public VsyncDisplay
     Monitor mVsyncEnabledLock;
     base::Thread* mVsyncThread;
     bool mVsyncEnabled;
-}; // D3DVsyncDisplay
+}; // DWMVsyncDisplay
 
 already_AddRefed<mozilla::gfx::VsyncSource>
 gfxWindowsPlatform::CreateHardwareVsyncSource()
@@ -2688,9 +2688,9 @@ gfxWindowsPlatform::CreateHardwareVsyncSource()
     return gfxPlatform::CreateSoftwareVsyncSource();
   }
 
-  nsRefPtr<D3DVsyncDisplay> globalDisplay = new D3DVsyncDisplay(VsyncSource::kGlobalDisplayID);
+  nsRefPtr<DWMVsyncDisplay> oneDisplay = new DWMVsyncDisplay(VsyncSource::kGlobalDisplayID);
   nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
-  vsyncSource->RegisterDisplay(globalDisplay);
+  vsyncSource->RegisterDisplay(oneDisplay);
   return vsyncSource.forget();
 }
 
