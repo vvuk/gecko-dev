@@ -1170,8 +1170,20 @@ public:
 
     // the RefreshTimer vsync dispatcher conveniently acts like what we want here
     // XXX replace this with a generic vsync source thing
+#if 0
+    // for testing a non-default display
+    nsTArray<nsRefPtr<gfx::VsyncDisplay>> displays;
+    gfxPlatform::GetPlatform()->GetHardwareVsync()->GetDisplays(displays);
+    if (displays.Length() > 1) {
+      mObservedDisplay = displays[1];
+    } else {
+      mObservedDisplay =
+        gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay();
+    }
+#else
     mObservedDisplay =
       gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay();
+#endif
     mObservedDisplay->AddVsyncObserver(this);
     mObservedVsyncDirectly = true;
   }
@@ -1277,10 +1289,11 @@ nsBaseWidget::UpdateVsyncObserver()
     // forward to our own listeners.
     mIncomingVsyncObserver->ObserveWidget(GetVsyncRootWidget());
 
+#if 1
     char idstr[NSID_LENGTH];
     mIncomingVsyncObserver->GetObservedDisplayIdentifier().ToProvidedString(idstr);
-
     VSYNC_LOG("[%s]: Widget %p observing root widget %p (vsync ID %s)\n", XRE_IsParentProcess() ? "Parent" : "Child", this, GetVsyncRootWidget(), idstr);
+#endif
 
     return;
   }
@@ -1290,11 +1303,12 @@ nsBaseWidget::UpdateVsyncObserver()
     // just listen to platform vsync directly.
     // XXX this should be observing vsync for the display this widget is on!
     mIncomingVsyncObserver->ObserveVsyncDirectly();
-    
+
+#if 1
     char idstr[NSID_LENGTH];
     mIncomingVsyncObserver->GetObservedDisplayIdentifier().ToProvidedString(idstr);
-
     VSYNC_LOG("[Parent]: Widget %p root observing vsync ID %s\n", this, idstr);
+#endif
   } else {
     // else, we're a child process; use PBackground to get a VsyncChild to listen to
 
@@ -1312,9 +1326,11 @@ nsBaseWidget::UpdateVsyncObserver()
       }
     }
 
+#if 1
     char idstr[NSID_LENGTH];
     mDesiredVsyncSourceID.ToProvidedString(idstr);
     VSYNC_LOG("[Child]: Widget %p observing vsync ID %s\n", this, idstr);
+#endif
   }
 }
 
@@ -1350,7 +1366,6 @@ nsBaseWidget::ForwardVsyncNotification(TimeStamp aVsyncTimestamp)
 {
   nsTArray<nsRefPtr<gfx::VsyncObserver>> observersCopy;
   {
-    //VSYNC_LOG("%p ForwardVsyncNotification\n", this);
     MutexAutoLock lock(mVsyncObserversLock);
     observersCopy.AppendElements(mVsyncObservers);
   }
