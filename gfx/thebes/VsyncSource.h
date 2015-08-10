@@ -55,6 +55,7 @@ public:
   virtual void RegisterDisplay(VsyncDisplay* aDisplay);
   virtual void UnregisterDisplay(const nsID& aDisplayID);
   virtual already_AddRefed<VsyncDisplay> GetDisplay(const nsID& aDisplayID);
+  virtual void GetDisplays(nsTArray<nsRefPtr<VsyncDisplay>>& aDisplays);
 
   already_AddRefed<VsyncDisplay> GetGlobalDisplay() {
     return GetDisplay(kGlobalDisplayID);

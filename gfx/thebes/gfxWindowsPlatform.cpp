@@ -74,6 +74,7 @@
 
 #include "SurfaceCache.h"
 #include "gfxPrefs.h"
+#include "gfxUtils.h"
 
 #include "VsyncSource.h"
 #include "DriverCrashGuard.h"
@@ -2752,9 +2753,17 @@ gfxWindowsPlatform::CreateHardwareVsyncSource()
     return gfxPlatform::CreateSoftwareVsyncSource();
   }
 
-  nsRefPtr<DWMVsyncDisplay> oneDisplay = new DWMVsyncDisplay(VsyncSource::kGlobalDisplayID);
   nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
+  
+  nsRefPtr<DWMVsyncDisplay> globalDisplay = new DWMVsyncDisplay(VsyncSource::kGlobalDisplayID);
+  vsyncSource->RegisterDisplay(globalDisplay);
+
+#if 0
+  // register an extra one for testing
+  nsRefPtr<DWMVsyncDisplay> oneDisplay = new DWMVsyncDisplay(gfxUtils::GenerateUUID());
   vsyncSource->RegisterDisplay(oneDisplay);
+#endif
+
   return vsyncSource.forget();
 }
 

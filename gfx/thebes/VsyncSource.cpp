@@ -150,5 +150,15 @@ VsyncSource::GetDisplay(const nsID& aDisplayID)
   return nullptr;
 }
 
+void
+VsyncSource::GetDisplays(nsTArray<nsRefPtr<VsyncDisplay>>& aDisplays)
+{
+  MonitorAutoLock lock(mDisplaysMonitor);
+
+  for (size_t i = 0; i < mDisplays.Length(); ++i) {
+    aDisplays.AppendElement(mDisplays[i]);
+  }
+}
+
 } //namespace gfx
 } //namespace mozilla
