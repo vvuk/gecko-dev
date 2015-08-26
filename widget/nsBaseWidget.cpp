@@ -1321,11 +1321,6 @@ nsBaseWidget::UpdateVsyncObserver()
 bool
 nsBaseWidget::AddVsyncObserver(gfx::VsyncObserver *aObserver)
 {
-  if (!gfxPrefs::HardwareVsyncEnabled()) {
-    VSYNC_LOG("nsBaseWidget::AddVsyncObserver Hardware vsync disabled!\n");
-    return false;
-  }
-
   MutexAutoLock lock(mVsyncObserversLock);
   if (!mVsyncObservers.Contains(aObserver)) {
     mVsyncObservers.AppendElement(aObserver);

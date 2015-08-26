@@ -161,7 +161,7 @@ private:
   bool mNeedsComposite;
   bool mIsObservingVsync;
   int32_t mVsyncNotificationsSkipped;
-  CompositorParent* mCompositorParent;
+
   nsIWidget* mCompositorWidget;
   nsRefPtr<CompositorVsyncScheduler::Observer> mVsyncObserver;
 
