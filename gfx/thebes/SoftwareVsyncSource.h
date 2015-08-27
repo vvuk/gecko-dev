@@ -32,7 +32,9 @@ public:
 protected:
   ~SoftwareDisplay();
 
-private:
+  void InternalEnableVsync();
+  void InternalDisableVsync();
+
   mozilla::TimeDuration mVsyncRate;
   // Use a chromium thread because nsITimers* fire on the main thread
   base::Thread* mVsyncThread;

@@ -1552,7 +1552,7 @@ TabChild::ApplyShowInfo(const ShowInfo& aInfo)
   mDPI = aInfo.dpi();
   mDefaultScale = aInfo.defaultScale();
   if (mPuppetWidget) {
-    mPuppetWidget->SetVsyncSourceID(aInfo.vsyncSourceID());
+    mPuppetWidget->SetVsyncDisplayID(aInfo.vsyncDisplayID());
   }
 }
 

@@ -162,7 +162,6 @@ private:
   bool mIsObservingVsync;
   int32_t mVsyncNotificationsSkipped;
 
-  nsIWidget* mCompositorWidget;
   nsRefPtr<CompositorVsyncScheduler::Observer> mVsyncObserver;
 
   mozilla::Monitor mCurrentCompositeTaskMonitor;

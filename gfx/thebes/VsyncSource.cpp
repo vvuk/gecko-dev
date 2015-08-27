@@ -29,6 +29,7 @@ VsyncDisplay::VsyncDisplay(const nsID& aID)
 VsyncDisplay::~VsyncDisplay()
 {
   MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(mVsyncObservers.IsEmpty());
 }
 
 void
@@ -100,22 +101,30 @@ VsyncDisplay::UpdateVsyncStatus()
   }
 }
 
+int32_t
+VsyncSource::GetDisplayIndex(const nsID& aDisplayID)
+{
+  mDisplaysMonitor.AssertCurrentThreadOwns();
+
+  for (size_t i = 0; i < mDisplays.Length(); ++i) {
+    if (aDisplayID == mDisplays[i]->ID()) {
+      return int32_t(i);
+    }
+  }
+
+  return -1;
+}
+
 void
 VsyncSource::RegisterDisplay(VsyncDisplay* aDisplay)
 {
   const nsID& id = aDisplay->ID();
-  
+
   MonitorAutoLock lock(mDisplaysMonitor);
 
-  // check if it already exists
-  for (size_t i = 0; i < mDisplays.Length(); ++i) {
-    if (id == mDisplays[i]->ID()) {
-      MOZ_ASSERT(aDisplay == mDisplays[i], "RegisterDisplay: different display already registered with same ID!");
-
-      NS_WARNING("RegisterDisplay: display already registered!");
-      break;
-    }
-  }
+  // ensure that it's not already registered
+  int32_t existingDisplayIndex = GetDisplayIndex(id);
+  MOZ_ASSERT(existingDisplayIndex == -1);
 
   mDisplays.AppendElement(aDisplay);
 }
@@ -125,14 +134,11 @@ VsyncSource::UnregisterDisplay(const nsID& aDisplayID)
 {
   MonitorAutoLock lock(mDisplaysMonitor);
 
-  for (size_t i = 0; i < mDisplays.Length(); ++i) {
-    if (aDisplayID == mDisplays[i]->ID()) {
-      mDisplays.RemoveElementAt(i);
-      return;
-    }
-  }
-  
-  NS_WARNING("UnregisterDisplay: tried to unregister display that wasn't registered!");
+  // ensure that it is registered
+  int32_t existingDisplayIndex = GetDisplayIndex(aDisplayID);
+  MOZ_ASSERT(existingDisplayIndex != -1);
+
+  mDisplays.RemoveElementAt(existingDisplayIndex);
 }
 
 already_AddRefed<VsyncDisplay>
@@ -140,14 +146,13 @@ VsyncSource::GetDisplay(const nsID& aDisplayID)
 {
   MonitorAutoLock lock(mDisplaysMonitor);
 
-  for (size_t i = 0; i < mDisplays.Length(); ++i) {
-    if (aDisplayID == mDisplays[i]->ID()) {
-      nsRefPtr<VsyncDisplay> dpy = mDisplays[i];
-      return dpy.forget();
-    }
+  int32_t existingDisplayIndex = GetDisplayIndex(aDisplayID);
+  if (existingDisplayIndex == -1) {
+    return nullptr;
   }
 
-  return nullptr;
+  nsRefPtr<VsyncDisplay> dpy = mDisplays[existingDisplayIndex];
+  return dpy.forget();
 }
 
 void

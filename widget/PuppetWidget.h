@@ -251,7 +251,7 @@ public:
   virtual nsresult ClearNativeTouchSequence(nsIObserver* aObserver) override;
   virtual uint32_t GetMaxTouchPoints() const override;
 
-  void SetVsyncSourceID(const nsID& aID);
+  void SetVsyncDisplayID(const nsID& aID);
 
 protected:
   bool mEnabled;
