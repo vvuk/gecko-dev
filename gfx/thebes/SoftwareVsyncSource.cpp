@@ -30,17 +30,20 @@ void
 SoftwareDisplay::EnableVsync()
 {
   MOZ_ASSERT(mVsyncThread->IsRunning());
-  if (NS_IsMainThread()) {
-    if (mVsyncEnabled) {
-      return;
-    }
-    mVsyncEnabled = true;
+  MOZ_ASSERT(NS_IsMainThread());
 
-    mVsyncThread->message_loop()->PostTask(FROM_HERE,
-      NewRunnableMethod(this, &SoftwareDisplay::EnableVsync));
+  if (mVsyncEnabled) {
     return;
   }
 
+  mVsyncEnabled = true;
+  mVsyncThread->message_loop()->PostTask(FROM_HERE,
+    NewRunnableMethod(this, &SoftwareDisplay::InternalEnableVsync));
+}
+
+void
+SoftwareDisplay::InternalEnableVsync()
+{
   MOZ_ASSERT(IsInSoftwareVsyncThread());
   OnVsync(mozilla::TimeStamp::Now());
 }
@@ -49,17 +52,20 @@ void
 SoftwareDisplay::DisableVsync()
 {
   MOZ_ASSERT(mVsyncThread->IsRunning());
-  if (NS_IsMainThread()) {
-    if (!mVsyncEnabled) {
-      return;
-    }
-    mVsyncEnabled = false;
+  MOZ_ASSERT(NS_IsMainThread());
 
-    mVsyncThread->message_loop()->PostTask(FROM_HERE,
-      NewRunnableMethod(this, &SoftwareDisplay::DisableVsync));
+  if (!mVsyncEnabled) {
     return;
   }
 
+  mVsyncEnabled = false;
+  mVsyncThread->message_loop()->PostTask(FROM_HERE,
+    NewRunnableMethod(this, &SoftwareDisplay::InternalDisableVsync));
+}
+
+void
+SoftwareDisplay::InternalDisableVsync()
+{
   MOZ_ASSERT(IsInSoftwareVsyncThread());
   if (mCurrentVsyncTask) {
     mCurrentVsyncTask->Cancel();
@@ -99,9 +105,7 @@ SoftwareDisplay::OnVsync(mozilla::TimeStamp aVsyncTimestamp)
 
   // Prevent skew by still scheduling based on the original
   // vsync timestamp
-  if (mVsyncEnabled) {
-    ScheduleNextVsync(aVsyncTimestamp);
-  }
+  ScheduleNextVsync(aVsyncTimestamp);
 }
 
 void

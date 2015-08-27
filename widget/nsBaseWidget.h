@@ -296,7 +296,7 @@ protected:
   nsRefPtr<VsyncForwardingObserver> mIncomingVsyncObserver;
   nsTArray<nsRefPtr<mozilla::gfx::VsyncObserver>> mVsyncObservers;
   mozilla::Mutex mVsyncObserversLock;
-  nsID mDesiredVsyncSourceID;
+  nsID mDesiredVsyncDisplayID;
 
 public:
   // Should be called by derived implementations to notify on system color and

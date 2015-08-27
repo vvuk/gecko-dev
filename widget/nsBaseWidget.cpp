@@ -192,7 +192,7 @@ nsBaseWidget::nsBaseWidget()
   }
 #endif
   mShutdownObserver = new WidgetShutdownObserver(this);
-  mDesiredVsyncSourceID = gfx::VsyncSource::kGlobalDisplayID;
+  mDesiredVsyncDisplayID = gfx::VsyncSource::kGlobalDisplayID;
 }
 
 NS_IMPL_ISUPPORTS(WidgetShutdownObserver, nsIObserver)
@@ -1307,10 +1307,10 @@ nsBaseWidget::UpdateVsyncObserver()
     PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
     if (backgroundChild) {
       // If we already have PBackgroundChild, create the child VsyncRefreshDriverTimer here.
-      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, mDesiredVsyncSourceID, this);
+      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, mDesiredVsyncDisplayID, this);
     } else {
       // set up the callback
-      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(mDesiredVsyncSourceID, this);
+      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(mDesiredVsyncDisplayID, this);
       if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
         MOZ_CRASH("PVsync actor create failed!");
       }
@@ -1318,7 +1318,7 @@ nsBaseWidget::UpdateVsyncObserver()
 
 #if 1
     char idstr[NSID_LENGTH];
-    mDesiredVsyncSourceID.ToProvidedString(idstr);
+    mDesiredVsyncDisplayID.ToProvidedString(idstr);
     VSYNC_LOG("[Child]: Widget %p observing vsync ID %s\n", this, idstr);
 #endif
   }
@@ -2150,6 +2150,8 @@ nsBaseWidget::UnregisterPluginWindowForRemoteUpdates()
 void
 nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
 {
+  MOZ_ASSERT(mIncomingVsyncObserver);
+
   mHMD = aHMD;
 
   VSYNC_LOG("%p SetAttachedHMD %p\n", this, aHMD);
@@ -2160,14 +2162,9 @@ nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
   }
 
   if (aHMD) {
-    if (mIncomingVsyncObserver) {
-      mIncomingVsyncObserver->ObserveHMD(aHMD);
-    }
+    mIncomingVsyncObserver->ObserveHMD(aHMD);
   } else {
-    // only update it if we had it before
-    if (mIncomingVsyncObserver) {
-      UpdateVsyncObserver();
-    }
+    UpdateVsyncObserver();
   }
 }
 

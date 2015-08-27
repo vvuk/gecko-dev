@@ -51,7 +51,7 @@ public:
   static const nsID kGlobalDisplayID;
 
   VsyncSource();
-  
+
   virtual void RegisterDisplay(VsyncDisplay* aDisplay);
   virtual void UnregisterDisplay(const nsID& aDisplayID);
   virtual already_AddRefed<VsyncDisplay> GetDisplay(const nsID& aDisplayID);
@@ -63,6 +63,10 @@ public:
 
 protected:
   virtual ~VsyncSource() {}
+
+  // return index of aDisplayID in mDisplays, or -1 if not found.
+  // Assumes mDisplaysMonitor is locked.
+  int32_t GetDisplayIndex(const nsID& aDisplayID);
 
   Monitor mDisplaysMonitor;
   nsTArray<nsRefPtr<VsyncDisplay>> mDisplays;
