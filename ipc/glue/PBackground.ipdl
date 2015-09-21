@@ -51,9 +51,6 @@ parent:
   // this Display ID can be mozilla::gfx::VsyncSource::kGlobalDisplay
   PVsync(nsID aDisplayID);
 
-  prio(high) sync GetVsyncDisplay(nsID aDisplayID)
-    returns (PVsync aVsyncDisplay);
-
   PUDPSocket(OptionalPrincipalInfo pInfo, nsCString filter);
   PBroadcastChannel(PrincipalInfo pInfo, nsCString origin, nsString channel,
                     bool privateBrowsing);
