@@ -77,6 +77,10 @@ using namespace mozilla::layout;
 static PRLogModuleInfo *gLog = nullptr;
 #define LOG(...) MOZ_LOG(gLog, mozilla::LogLevel::Debug, (__VA_ARGS__))
 
+extern PRLogModuleInfo *gVsyncLog;
+#define VSYNC_LOG(...)  MOZ_LOG(gVsyncLog, mozilla::LogLevel::Debug, (__VA_ARGS__))
+#define PARENT_STR (XRE_IsParentProcess() ? "Parent" : "Child")
+
 #define DEFAULT_FRAME_RATE 60
 #define DEFAULT_THROTTLED_FRAME_RATE 1
 #define DEFAULT_RECOMPUTE_VISIBILITY_INTERVAL_MS 1000
@@ -366,6 +370,7 @@ protected:
   ~WidgetVsyncRefreshDriverTimer()
   {
     if (mWidget) {
+      VSYNC_LOG("[%s][%p] RefreshDriverTimer removingwidget vsync observer %p (destructor)\n", PARENT_STR, this, mInnerObserver.get());
       mWidget->RemoveVsyncObserver(mInnerObserver);
       NS_ReleaseOnMainThread(mWidget);
     }
@@ -409,11 +414,13 @@ protected:
     mLastFireEpoch = JS_Now();
     mLastFireTime = TimeStamp::Now();
 
+    VSYNC_LOG("[%s][%p] RefreshDriverTimer adding widget vsync observer %p\n", PARENT_STR, this, mInnerObserver.get());
     mWidget->AddVsyncObserver(mInnerObserver);
   }
 
   virtual void StopTimer() override
   {
+    VSYNC_LOG("[%s][%p] RefreshDriverTimer removingwidget vsync observer %p (stop)\n", PARENT_STR, this, mInnerObserver.get());
     mWidget->RemoveVsyncObserver(mInnerObserver);
   }
 

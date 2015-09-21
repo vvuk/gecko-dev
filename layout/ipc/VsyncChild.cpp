@@ -8,6 +8,10 @@
 
 #include "nsThreadUtils.h"
 
+extern PRLogModuleInfo *gVsyncLog;
+#define VSYNC_LOG(...)  MOZ_LOG(gVsyncLog, mozilla::LogLevel::Debug, (__VA_ARGS__))
+#define PARENT_STR (XRE_IsParentProcess() ? "Parent" : "Child")
+
 namespace mozilla {
 namespace layout {
 
@@ -16,11 +20,16 @@ VsyncChild::VsyncChild(const nsID& aDisplayIdentifier)
   , mObservingVsync(false)
   , mIsShutdown(false)
 {
+  char idstr[NSID_LENGTH];
+  aDisplayIdentifier.ToProvidedString(idstr);
+  VSYNC_LOG("[%s]: VsyncChild %p created for display ID %s\n", PARENT_STR, this, idstr);
+
   MOZ_ASSERT(NS_IsMainThread());
 }
 
 VsyncChild::~VsyncChild()
 {
+  VSYNC_LOG("[%s]: VsyncChild %p destroyed\n", PARENT_STR, this);
   MOZ_ASSERT(NS_IsMainThread());
 }
 
@@ -28,6 +37,7 @@ bool
 VsyncChild::SendObserve()
 {
   MOZ_ASSERT(NS_IsMainThread());
+  VSYNC_LOG("[%s]: VsyncChild %p observing\n", PARENT_STR, this);
   if (!mObservingVsync && !mIsShutdown) {
     mObservingVsync = true;
     PVsyncChild::SendObserve();
@@ -39,6 +49,7 @@ bool
 VsyncChild::SendUnobserve()
 {
   MOZ_ASSERT(NS_IsMainThread());
+  VSYNC_LOG("[%s]: VsyncChild %p unobserving\n", PARENT_STR, this);
   if (mObservingVsync && !mIsShutdown) {
     mObservingVsync = false;
     PVsyncChild::SendUnobserve();
@@ -53,6 +64,7 @@ VsyncChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
   MOZ_ASSERT(!mIsShutdown);
   mIsShutdown = true;
   mObserver = nullptr;
+  VSYNC_LOG("[%s]: VsyncChild %p actor destroyed\n", PARENT_STR, this);
 }
 
 bool

@@ -1070,6 +1070,12 @@ public:
     layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(aDisplayID);
     layout::VsyncChild* child = static_cast<layout::VsyncChild*>(actor);
 
+#if 1
+    char idstr[NSID_LENGTH];
+    aDisplayID.ToProvidedString(idstr);
+    VSYNC_LOG("[%s]: Vsync actor %p created for display ID %s\n", XRE_IsParentProcess() ? "Parent" : "Child", child, idstr);
+#endif
+
     nsBaseWidget::PVsyncActorCreated(aWidget, child);
   }
 
@@ -1340,6 +1346,7 @@ nsBaseWidget::AddVsyncObserver(gfx::VsyncObserver *aObserver)
   MutexAutoLock lock(mVsyncObserversLock);
   if (!mVsyncObservers.Contains(aObserver)) {
     mVsyncObservers.AppendElement(aObserver);
+    VSYNC_LOG("[%s][%p] adding vsync observer %p, new count: %d\n", XRE_IsParentProcess() ? "Parent" : "Child", this, aObserver, mVsyncObservers.Length());
   }
   return true;
 }
@@ -1357,6 +1364,7 @@ nsBaseWidget::RemoveVsyncObserver(gfx::VsyncObserver *aObserver)
     // XXX we should really do IndexOf, remove it while keeping a ref,
     // then actually allow the ref to drop outside of the mutex lock
     result = mVsyncObservers.RemoveElement(aObserver);
+    VSYNC_LOG("[%s][%p] removing vsync observer %p, new count: %d\n", XRE_IsParentProcess() ? "Parent" : "Child", this, aObserver, mVsyncObservers.Length());
   }
   return result;
 }
