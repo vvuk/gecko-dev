@@ -65,15 +65,15 @@ extern "C" {
 
 typedef int32_t ovrResult;
 typedef char ovrBool;
-typedef struct { int x, y; } ovrVector2i;
-typedef struct { int w, h; } ovrSizei;
-typedef struct { ovrVector2i Pos; ovrSizei Size; } ovrRecti;
-typedef struct { float x, y, z, w; } ovrQuatf;
-typedef struct { float x, y; } ovrVector2f;
-typedef struct { float x, y, z; } ovrVector3f;
-typedef struct { float M[4][4]; } ovrMatrix4f;
+typedef struct OVR_ALIGNAS(4) { int x, y; } ovrVector2i;
+typedef struct OVR_ALIGNAS(4) { int w, h; } ovrSizei;
+typedef struct OVR_ALIGNAS(4) { ovrVector2i Pos; ovrSizei Size; } ovrRecti;
+typedef struct OVR_ALIGNAS(4) { float x, y, z, w; } ovrQuatf;
+typedef struct OVR_ALIGNAS(4) { float x, y; } ovrVector2f;
+typedef struct OVR_ALIGNAS(4) { float x, y, z; } ovrVector3f;
+typedef struct OVR_ALIGNAS(4) { float M[4][4]; } ovrMatrix4f;
 
-typedef struct {
+typedef struct OVR_ALIGNAS(4) {
   ovrQuatf Orientation;
   ovrVector3f Position;
 } ovrPosef;
@@ -96,23 +96,23 @@ typedef struct {
 } ovrFovPort;
 
 typedef enum {
-  ovrHmd_None             = 0,    
-  ovrHmd_DK1              = 3,
-  ovrHmd_DKHD             = 4,
-  ovrHmd_DK2              = 6,
-  ovrHmd_BlackStar        = 7,
-  ovrHmd_CB               = 8,
-  ovrHmd_Other            = 9,
-  ovrHmd_EnumSize         = 0x7fffffff
+  ovrHmd_None      = 0,    
+  ovrHmd_DK1       = 3,
+  ovrHmd_DKHD      = 4,
+  ovrHmd_DK2       = 6,
+  ovrHmd_CB        = 8,
+  ovrHmd_Other     = 9,
+  ovrHmd_E3_2015   = 10,
+  ovrHmd_ES06      = 11,
+  ovrHmd_EnumSize = 0x7fffffff
 } ovrHmdType;
 
 typedef enum {
+  ovrHmdCap_Writable_Mask     = 0x0000,
+  ovrHmdCap_Service_Mask      = 0x0000,
   ovrHmdCap_DebugDevice       = 0x0010,
-  ovrHmdCap_LowPersistence    = 0x0080,
-  ovrHmdCap_DynamicPrediction = 0x0200,
-  ovrHmdCap_NoVSync           = 0x1000,
   ovrHmdCap_EnumSize          = 0x7fffffff
-} ovrHmdCapBits;
+} ovrHmdCaps;
 
 typedef enum
 {
@@ -123,6 +123,10 @@ typedef enum
   ovrTrackingCap_EnumSize         = 0x7fffffff
 } ovrTrackingCaps;
 
+typedef struct OVR_ALIGNAS(OVR_PTR_SIZE) {
+  char Reserved[8];
+} ovrGraphicsLuid;
+
 typedef enum {
   ovrEye_Left  = 0,
   ovrEye_Right = 1,
@@ -131,11 +135,10 @@ typedef enum {
 } ovrEyeType;
 
 typedef struct OVR_ALIGNAS(OVR_PTR_SIZE) {
-  void* Handle;
   ovrHmdType  Type;
-  OVR_ON64(uint32_t pad0;)
-  const char* ProductName;
-  const char* Manufacturer;
+  OVR_ON64(unsigned char pad0[4];)
+  char ProductName[64];
+  char Manufacturer[64];
   short VendorId;
   short ProductId;
   char SerialNumber[24];
@@ -146,17 +149,19 @@ typedef struct OVR_ALIGNAS(OVR_PTR_SIZE) {
   float CameraFrustumNearZInMeters;
   float CameraFrustumFarZInMeters;
 
-  unsigned int HmdCaps;
-  unsigned int TrackingCaps;
+  unsigned int AvailableHmdCaps;
+  unsigned int DefaultHmdCaps;
+  unsigned int AvailableTrackingCaps;
+  unsigned int DefaultTrackingCaps;
 
   ovrFovPort  DefaultEyeFov[ovrEye_Count];
   ovrFovPort  MaxEyeFov[ovrEye_Count];
-  ovrEyeType  EyeRenderOrder[ovrEye_Count];
-
   ovrSizei    Resolution;
+  float DisplayRefreshRate;
+  OVR_ON64(unsigned char pad1[4];)
 } ovrHmdDesc;
 
-typedef const ovrHmdDesc* ovrHmd;
+typedef struct ovrHmdStruct* ovrHmd;
 
 typedef enum {
   ovrStatus_OrientationTracked    = 0x0001,
@@ -180,10 +185,11 @@ typedef struct OVR_ALIGNAS(8) {
   ovrPoseStatef HeadPose;
   ovrPosef CameraPose;
   ovrPosef LeveledCameraPose;
+  ovrPoseStatef HandPoses[2];
   ovrSensorData RawSensorData;
   unsigned int StatusFlags;
   uint32_t LastCameraFrameCounter;
-  uint32_t pad0;
+  unsigned char pad0[4];
 } ovrTrackingState;
 
 typedef struct OVR_ALIGNAS(8) {
@@ -213,13 +219,11 @@ typedef struct OVR_ALIGNAS(4) {
 } ovrViewScaleDesc;
 
 typedef enum {
-    ovrRenderAPI_None,
-    ovrRenderAPI_OpenGL,
-    ovrRenderAPI_Android_GLES,
-    ovrRenderAPI_D3D9_Obsolete,
-    ovrRenderAPI_D3D10_Obsolete,
-    ovrRenderAPI_D3D11,
-    ovrRenderAPI_Count,
+    ovrRenderAPI_None = 0,
+    ovrRenderAPI_OpenGL = 1,
+    ovrRenderAPI_Android_GLES = 2,
+    ovrRenderAPI_D3D11 = 5,
+    ovrRenderAPI_Count = 4,
     ovrRenderAPI_EnumSize = 0x7fffffff
 } ovrRenderAPIType;
 
@@ -230,7 +234,7 @@ typedef struct OVR_ALIGNAS(4) {
 
 typedef struct OVR_ALIGNAS(OVR_PTR_SIZE) {
   ovrTextureHeader Header;
-  OVR_ON64(uint32_t pad0;)
+  OVR_ON64(unsigned char pad0[4];)
   uintptr_t PlatformData[8];
 } ovrTexture;
 
@@ -244,7 +248,6 @@ typedef enum {
   ovrInit_Debug          = 0x00000001,
   ovrInit_ServerOptional = 0x00000002,
   ovrInit_RequestVersion = 0x00000004,
-  ovrInit_ForceNoDebug   = 0x00000008,
   ovrInit_EnumSize       = 0x7fffffff
 } ovrInitFlags;
 
@@ -289,9 +292,22 @@ typedef struct OVR_ALIGNAS(8) {
   uint32_t Flags;
   uint32_t RequestedMinorVersion;
   ovrLogCallback LogCallback;
+  uintptr_t UserData;
   uint32_t ConnectionTimeoutMS;
-  OVR_ON64(uint32_t pad0;)
+  OVR_ON64(unsigned char pad0[4];)
 } ovrInitParams;
+
+#define OVR_PERF_HUD_MODE "PerfHudMode"
+
+typedef enum {
+  ovrPerfHud_Off = 0,
+  ovrPerfHud_LatencyTiming = 1,
+  ovrPerfHud_RenderTiming = 2,
+  ovrPerfHud_PerfHeadroom = 3,
+  ovrPerfHud_VersionInfo = 4,
+  ovrPerfHud_Count,
+  ovrPerfHud_EnumSize = 0x7fffffff
+} ovrPerfHudMode;
 
 enum {
   ovrSuccess = 0,
@@ -325,22 +341,23 @@ enum {
 typedef ovrResult (OVR_PFN *pfn_ovr_Initialize)(ovrInitParams const* params);
 typedef void (OVR_PFN *pfn_ovr_Shutdown)();
 typedef double (OVR_PFN *pfn_ovr_GetTimeInSeconds)();
+typedef ovrHmdDesc (OVR_PFN *pfn_ovr_GetHmdDesc)(ovrHmd hmd);
   
-typedef ovrResult (OVR_PFN *pfn_ovrHmd_Detect)();
-typedef ovrResult (OVR_PFN *pfn_ovrHmd_Create)(int index, ovrHmd*);
-typedef ovrResult (OVR_PFN *pfn_ovrHmd_CreateDebug)(ovrHmdType type, ovrHmd*);
-typedef void (OVR_PFN *pfn_ovrHmd_Destroy)(ovrHmd hmd);
+typedef ovrResult (OVR_PFN *pfn_ovr_Create)(ovrHmd*, ovrGraphicsLuid*);
+typedef void (OVR_PFN *pfn_ovr_Destroy)(ovrHmd hmd);
   
-typedef ovrResult (OVR_PFN *pfn_ovrHmd_ConfigureTracking)(ovrHmd hmd, unsigned int supportedTrackingCaps, unsigned int requiredTrackingCaps); 
-typedef void (OVR_PFN *pfn_ovrHmd_RecenterPose)(ovrHmd hmd);
-typedef ovrTrackingState (OVR_PFN *pfn_ovrHmd_GetTrackingState)(ovrHmd hmd, double absTime);
-typedef ovrSizei (OVR_PFN *pfn_ovrHmd_GetFovTextureSize)(ovrHmd hmd, ovrEyeType eye, ovrFovPort fov, float pixelsPerDisplayPixel);
-typedef ovrEyeRenderDesc (OVR_PFN *pfn_ovrHmd_GetRenderDesc)(ovrHmd hmd, ovrEyeType eyeType, ovrFovPort fov);
+typedef ovrResult (OVR_PFN *pfn_ovr_ConfigureTracking)(ovrHmd hmd, unsigned int requestedTrackingCaps, unsigned int requiredTrackingCaps); 
+typedef void (OVR_PFN *pfn_ovr_RecenterPose)(ovrHmd hmd);
+typedef ovrTrackingState (OVR_PFN *pfn_ovr_GetTrackingState)(ovrHmd hmd, double absTime);
+typedef ovrSizei (OVR_PFN *pfn_ovr_GetFovTextureSize)(ovrHmd hmd, ovrEyeType eye, ovrFovPort fov, float pixelsPerDisplayPixel);
+typedef ovrEyeRenderDesc (OVR_PFN *pfn_ovr_GetRenderDesc)(ovrHmd hmd, ovrEyeType eyeType, ovrFovPort fov);
 
-typedef void (OVR_PFN *pfn_ovrHmd_DestroySwapTextureSet)(ovrHmd hmd, ovrSwapTextureSet* textureSet);
-typedef ovrResult (OVR_PFN *pfn_ovrHmd_SubmitFrame)(ovrHmd hmd, unsigned int frameIndex,
-                                                    const ovrViewScaleDesc* viewScaleDesc,
-                                                    ovrLayerHeader const * const * layerPtrList, unsigned int layerCount);
+typedef void (OVR_PFN *pfn_ovr_DestroySwapTextureSet)(ovrHmd hmd, ovrSwapTextureSet* textureSet);
+typedef ovrResult (OVR_PFN *pfn_ovr_SubmitFrame)(ovrHmd hmd, unsigned int frameIndex,
+                                                 const ovrViewScaleDesc* viewScaleDesc,
+                                                 ovrLayerHeader const * const * layerPtrList, unsigned int layerCount);
+
+typedef ovrBool (OVR_PFN *pfn_ovr_SetInt)(ovrHmd, const char*, int);
 
 #ifdef XP_WIN
 struct D3D11_TEXTURE2D_DESC;
@@ -360,9 +377,15 @@ typedef union {
     ovrD3D11TextureData D3D11;
 } ovrD3D11Texture;
 
-typedef ovrResult (OVR_PFN *pfn_ovrHmd_CreateSwapTextureSetD3D11)(ovrHmd hmd, ID3D11Device* device,
-                                                                  const D3D11_TEXTURE2D_DESC* desc,
-                                                                  ovrSwapTextureSet** outTextureSet);
+typedef enum {
+    ovrSwapTextureSetD3D11_Typeless = 0x0001,
+    ovrSwapTextureSetD3D11_EnumSize = 0x7fffffff
+} ovrSwapTextureSetD3D11Flags;
+
+typedef ovrResult (OVR_PFN *pfn_ovr_CreateSwapTextureSetD3D11)(ovrHmd hmd, ID3D11Device* device,
+                                                               const D3D11_TEXTURE2D_DESC* desc,
+                                                               unsigned int miscFlags,
+                                                               ovrSwapTextureSet** outTextureSet);
 #endif
 
 typedef struct {
@@ -375,9 +398,9 @@ typedef union {
     ovrGLTextureData OGL;
 } ovrGLTexture;
 
-typedef ovrResult (OVR_PFN *pfn_ovrHmd_CreateSwapTextureSetGL)(ovrHmd hmd, uint32_t format,
-                                                               int width, int height,
-                                                               ovrSwapTextureSet** outTextureSet);
+typedef ovrResult (OVR_PFN *pfn_ovr_CreateSwapTextureSetGL)(ovrHmd hmd, uint32_t format,
+                                                            int width, int height,
+                                                            ovrSwapTextureSet** outTextureSet);
 
 #ifdef __cplusplus 
 }
