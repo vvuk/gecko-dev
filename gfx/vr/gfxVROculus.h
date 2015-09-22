@@ -67,6 +67,7 @@ protected:
   }
 
   ovrHmd mHMD;
+  ovrHmdDesc mDesc;
   ovrFovPort mFOVPort[2];
   uint32_t mStartCount;
   ovrTrackingState mLastTrackingState;
