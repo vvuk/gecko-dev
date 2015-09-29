@@ -1364,15 +1364,19 @@ nsBaseWidget::UpdateVsyncObserver()
 bool
 nsBaseWidget::AddVsyncObserver(gfx::VsyncObserver *aObserver)
 {
-  MutexAutoLock lock(mVsyncObserversLock);
-  if (!mVsyncObservers.Contains(aObserver)) {
-    mVsyncObservers.AppendElement(aObserver);
-    VSYNC_LOG("[%s][%p] adding vsync observer %p, new count: %d\n", PARENT_OR_CHILD, this, aObserver, mVsyncObservers.Length());
+  bool unpause = false;
+  {
+    MutexAutoLock lock(mVsyncObserversLock);
+    if (!mVsyncObservers.Contains(aObserver)) {
+      mVsyncObservers.AppendElement(aObserver);
+      VSYNC_LOG("[%s][%p] adding vsync observer %p, new count: %d\n", PARENT_OR_CHILD, this, aObserver, mVsyncObservers.Length());
 
-    // Unpause if this is the first one we just added
-    if (mVsyncObservers.Length() == 1) {
-      mIncomingVsyncObserver->Unpause();
+      // Unpause if this is the first one we just added
+      unpause = mVsyncObservers.Length() == 1;
     }
+  }
+  if (unpause) {
+    mIncomingVsyncObserver->Unpause();
   }
   return true;
 }
@@ -1381,12 +1385,16 @@ bool
 nsBaseWidget::RemoveVsyncObserver(gfx::VsyncObserver *aObserver)
 {
   bool result;
-  MutexAutoLock lock(mVsyncObserversLock);
-  result = mVsyncObservers.RemoveElement(aObserver);
-  
-  VSYNC_LOG("[%s][%p] removing vsync observer %p, new count: %d\n", PARENT_OR_CHILD, this, aObserver, mVsyncObservers.Length());
+  bool pause = false;
+  {
+    MutexAutoLock lock(mVsyncObserversLock);
+    result = mVsyncObservers.RemoveElement(aObserver);
+    VSYNC_LOG("[%s][%p] removing vsync observer %p, new count: %d\n", PARENT_OR_CHILD, this, aObserver, mVsyncObservers.Length());
 
-  if (mVsyncObservers.Length() == 0) {
+    // Pause if the last observer was removed
+    pause = mVsyncObservers.Length() == 0;
+  }
+  if (pause) {
     mIncomingVsyncObserver->Pause();
   }
   return result;
