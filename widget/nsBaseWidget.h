@@ -281,8 +281,6 @@ public:
   bool RemoveVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) override;
   nsID GetVsyncDisplayIdentifier() override;
 
-  static void PVsyncActorCreated(nsBaseWidget *aWidget, mozilla::layout::VsyncChild *aVsyncChild);
-  
 protected:
   friend class VsyncForwardingObserver;
   friend class WidgetVsyncDisplay;

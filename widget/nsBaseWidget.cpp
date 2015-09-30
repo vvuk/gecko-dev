@@ -1269,7 +1269,9 @@ protected:
 };
 
 /* static */ void
-VsyncChildCreateCallback::CreateVsyncActor(PBackgroundChild* aPBackgroundChild, const nsID& aDisplayID, VsyncForwardingObserver *aObserver)
+VsyncChildCreateCallback::CreateVsyncActor(PBackgroundChild* aPBackgroundChild,
+                                           const nsID& aDisplayID,
+                                           VsyncForwardingObserver *aObserver)
 {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(aPBackgroundChild);
@@ -1301,14 +1303,7 @@ nsBaseWidget::GetVsyncDisplayIdentifier()
     return mIncomingVsyncObserver->GetObservedDisplayIdentifier();
   }
 
-  return gfx::VsyncSource::kGlobalDisplayID;
-}
-
-/* static */ void
-nsBaseWidget::PVsyncActorCreated(nsBaseWidget *aWidget, mozilla::layout::VsyncChild *aVsyncChild)
-{
-  aWidget->mVsyncChild = aVsyncChild;
-  aWidget->mIncomingVsyncObserver->ObserveVsync(aVsyncChild);
+  return mDesiredVsyncDisplayID;
 }
 
 nsIWidget*
@@ -1343,7 +1338,7 @@ nsBaseWidget::UpdateVsyncObserver()
   }
 
   mIncomingVsyncObserver->ObserveDisplay(mDesiredVsyncDisplayID);
-  
+
 #if 1
   char idstr[NSID_LENGTH];
   mDesiredVsyncDisplayID.ToProvidedString(idstr);
@@ -1407,6 +1402,10 @@ nsBaseWidget::ForwardVsyncNotification(TimeStamp aVsyncTimestamp)
 void
 nsBaseWidget::ShutdownVsync()
 {
+  if (mIncomingVsyncObserver) {
+    mIncomingVsyncObserver->Unobserve();
+    mIncomingVsyncObserver = nullptr;
+  }
 }
 
 void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)

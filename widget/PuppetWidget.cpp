@@ -1303,6 +1303,7 @@ PuppetWidget::SetVsyncDisplayID(const nsID& aID)
   if (aID == mDesiredVsyncDisplayID)
     return;
 
+  mDesiredVsyncDisplayID = aID;
   UpdateVsyncObserver();
 }
 
