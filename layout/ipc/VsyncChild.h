@@ -9,11 +9,9 @@
 #include "mozilla/layout/PVsyncChild.h"
 #include "nsISupportsImpl.h"
 #include "mozilla/nsRefPtr.h"
+#include "VsyncSource.h"
 
 namespace mozilla {
-
-class VsyncObserver;
-
 namespace ipc {
 class BackgroundChildImpl;
 } // namespace ipc
@@ -24,33 +22,36 @@ namespace layout {
 // delivers it to the child process. Currently this is restricted to the main
 // thread only. The actor will stay alive until the process dies or its
 // PVsyncParent actor dies.
-class VsyncChild final : public PVsyncChild
+class VsyncChild final :
+    public PVsyncChild,
+    public gfx::VsyncDisplay
 {
-  NS_INLINE_DECL_REFCOUNTING(VsyncChild)
-
   friend class mozilla::ipc::BackgroundChildImpl;
 
 public:
-  // Hide the SendObserve/SendUnobserve in PVsyncChild. We add an flag
-  // mObservingVsync to handle the race problem of unobserving vsync event.
-  bool SendObserve();
-  bool SendUnobserve();
+  // VsyncDisplay implementation
+  void EnableVsync() override;
+  void DisableVsync() override;
+  bool IsVsyncEnabled() override { return mObservingVsync; }
 
-  // Bind a VsyncObserver into VsyncChild after ipc channel connected.
-  void SetVsyncObserver(VsyncObserver* aVsyncObserver);
+  const nsID& DisplayIdentifier() const { return mDisplayIdentifier; }
 
 private:
-  VsyncChild();
+  explicit VsyncChild(const nsID& aDisplayIdentifier);
   virtual ~VsyncChild();
+
+  // Notify the other end whether we want to receive vsync events. We
+  // add an flag mObservingVsync to handle the race problem of
+  // unobserving vsync event.
+  bool SendObserve();
+  bool SendUnobserve();
 
   virtual bool RecvNotify(const TimeStamp& aVsyncTimestamp) override;
   virtual void ActorDestroy(ActorDestroyReason aActorDestroyReason) override;
 
+  nsID mDisplayIdentifier;
   bool mObservingVsync;
   bool mIsShutdown;
-
-  // The content side vsync observer.
-  nsRefPtr<VsyncObserver> mObserver;
 };
 
 } // namespace layout

@@ -70,7 +70,6 @@
 #ifdef MOZ_ENABLE_PROFILER_SPS
 #include "ProfilerMarkers.h"
 #endif
-#include "mozilla/VsyncDispatcher.h"
 
 #ifdef MOZ_WIDGET_GONK
 #include "GeckoTouchDispatcher.h"
@@ -290,7 +289,6 @@ CompositorVsyncScheduler::CompositorVsyncScheduler(CompositorParent* aCompositor
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(aWidget != nullptr);
   mVsyncObserver = new Observer(this);
-  mCompositorVsyncDispatcher = aWidget->GetCompositorVsyncDispatcher();
 #ifdef MOZ_WIDGET_GONK
   GeckoTouchDispatcher::GetInstance()->SetCompositorVsyncScheduler(this);
 #endif
@@ -305,9 +303,13 @@ CompositorVsyncScheduler::~CompositorVsyncScheduler()
 {
   MOZ_ASSERT(!mIsObservingVsync);
   MOZ_ASSERT(!mVsyncObserver);
-  // The CompositorVsyncDispatcher is cleaned up before this in the nsBaseWidget, which stops vsync listeners
+  // just in case we somehow got destroyed without a Destroy() call
+  if (mVsyncObserver) {
+    UnobserveVsync();
+    mVsyncObserver->Destroy();
+    mVsyncObserver = nullptr;
+  }
   mCompositorParent = nullptr;
-  mCompositorVsyncDispatcher = nullptr;
 }
 
 void
@@ -315,8 +317,10 @@ CompositorVsyncScheduler::Destroy()
 {
   MOZ_ASSERT(CompositorParent::IsInCompositorThread());
   UnobserveVsync();
-  mVsyncObserver->Destroy();
-  mVsyncObserver = nullptr;
+  if (mVsyncObserver) {
+    mVsyncObserver->Destroy();
+    mVsyncObserver = nullptr;
+  }
   CancelCurrentSetNeedsCompositeTask();
   CancelCurrentCompositeTask();
 }
@@ -463,16 +467,14 @@ CompositorVsyncScheduler::NeedsComposite()
 void
 CompositorVsyncScheduler::ObserveVsync()
 {
-  MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  mCompositorVsyncDispatcher->SetCompositorVsyncObserver(mVsyncObserver);
+  mCompositorParent->GetWidget()->AddVsyncObserver(mVsyncObserver);
   mIsObservingVsync = true;
 }
 
 void
 CompositorVsyncScheduler::UnobserveVsync()
 {
-  MOZ_ASSERT(CompositorParent::IsInCompositorThread());
-  mCompositorVsyncDispatcher->SetCompositorVsyncObserver(nullptr);
+  mCompositorParent->GetWidget()->RemoveVsyncObserver(mVsyncObserver);
   mIsObservingVsync = false;
 }
 

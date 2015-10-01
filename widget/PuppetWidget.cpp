@@ -28,6 +28,9 @@ using namespace mozilla::gfx;
 using namespace mozilla::layers;
 using namespace mozilla::widget;
 
+extern PRLogModuleInfo *gVsyncLog;
+#define VSYNC_LOG(...)  MOZ_LOG(gVsyncLog, mozilla::LogLevel::Debug, (__VA_ARGS__))
+
 static void
 InvalidateRegion(nsIWidget* aWidget, const nsIntRegion& aRegion)
 {
@@ -1346,6 +1349,22 @@ PuppetWidget::GetCurrentWidgetListener()
   }
 
   return mAttachedWidgetListener;
+}
+
+void
+PuppetWidget::SetVsyncDisplayID(const nsID& aID)
+{
+#if 1
+  char idstr[NSID_LENGTH];
+  aID.ToProvidedString(idstr);
+  VSYNC_LOG("PuppetWidget[%p]::SetVsyncDisplayID %s", this, idstr);
+#endif
+
+  if (aID == mDesiredVsyncDisplayID)
+    return;
+
+  mDesiredVsyncDisplayID = aID;
+  UpdateVsyncObserver();
 }
 
 } // namespace widget

@@ -676,11 +676,11 @@ nsScreenManagerGonk::VsyncControl(bool aEnabled)
     }
 
     MOZ_ASSERT(NS_IsMainThread());
-    VsyncSource::Display &display = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay();
+    nsRefPtr<VsyncDisplay> display = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay();
     if (aEnabled) {
-        display.EnableVsync();
+        display->EnableVsync();
     } else {
-        display.DisableVsync();
+        display->DisableVsync();
     }
 }
 

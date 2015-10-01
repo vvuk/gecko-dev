@@ -103,6 +103,7 @@
 #include "nsIScriptError.h"
 #include "mozilla/EventForwards.h"
 #include "nsDeviceContext.h"
+#include "VsyncSource.h"
 
 #define BROWSER_ELEMENT_CHILD_SCRIPT \
     NS_LITERAL_STRING("chrome://global/content/BrowserElementChild.js")
@@ -1582,7 +1583,7 @@ TabChild::DoFakeShow(const TextureFactoryIdentifier& aTextureFactoryIdentifier,
                      const uint64_t& aLayersId,
                      PRenderFrameChild* aRenderFrame)
 {
-  ShowInfo info(EmptyString(), false, false, 0, 0);
+  ShowInfo info(EmptyString(), false, false, 0, 0, gfx::VsyncSource::kGlobalDisplayID);
   RecvShow(ScreenIntSize(0, 0), info, aTextureFactoryIdentifier,
            aLayersId, aRenderFrame, mParentIsActive);
   mDidFakeShow = true;
@@ -1620,6 +1621,9 @@ TabChild::ApplyShowInfo(const ShowInfo& aInfo)
   }
   mDPI = aInfo.dpi();
   mDefaultScale = aInfo.defaultScale();
+  if (mPuppetWidget) {
+    mPuppetWidget->SetVsyncDisplayID(aInfo.vsyncDisplayID());
+  }
 }
 
 #ifdef MOZ_WIDGET_GONK

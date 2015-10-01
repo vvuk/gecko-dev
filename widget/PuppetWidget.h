@@ -251,7 +251,11 @@ public:
   virtual nsresult ClearNativeTouchSequence(nsIObserver* aObserver) override;
   virtual uint32_t GetMaxTouchPoints() const override;
 
+
   virtual void StartAsyncScrollbarDrag(const AsyncDragMetrics& aDragMetrics) override;
+
+  void SetVsyncDisplayID(const nsID& aID);
+
 protected:
   bool mEnabled;
   bool mVisible;

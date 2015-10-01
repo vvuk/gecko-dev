@@ -430,64 +430,46 @@ bool gfxAndroidPlatform::HaveChoiceOfHWAndSWCanvas()
 }
 
 #ifdef MOZ_WIDGET_GONK
-class GonkVsyncSource final : public VsyncSource
+class GonkDisplay final : public VsyncDisplay
 {
 public:
-  GonkVsyncSource()
+  GonkDisplay(const nsID& aDisplayID)
+    : VsyncDisplay(aDisplayID)
+    , mVsyncEnabled(false)
   {
   }
 
-  virtual Display& GetGlobalDisplay() override
+  ~GonkDisplay()
   {
-    return mGlobalDisplay;
+    DisableVsync();
   }
 
-  class GonkDisplay final : public VsyncSource::Display
+  virtual void EnableVsync() override
   {
-  public:
-    GonkDisplay() : mVsyncEnabled(false)
-    {
+    MOZ_ASSERT(NS_IsMainThread());
+    if (IsVsyncEnabled()) {
+      return;
     }
+    mVsyncEnabled = HwcComposer2D::GetInstance()->EnableVsync(true);
+  }
 
-    ~GonkDisplay()
-    {
-      DisableVsync();
+  virtual void DisableVsync() override
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+    if (!IsVsyncEnabled()) {
+      return;
     }
+    mVsyncEnabled = HwcComposer2D::GetInstance()->EnableVsync(false);
+  }
 
-    virtual void EnableVsync() override
-    {
-      MOZ_ASSERT(NS_IsMainThread());
-      if (IsVsyncEnabled()) {
-        return;
-      }
-      mVsyncEnabled = HwcComposer2D::GetInstance()->EnableVsync(true);
-    }
-
-    virtual void DisableVsync() override
-    {
-      MOZ_ASSERT(NS_IsMainThread());
-      if (!IsVsyncEnabled()) {
-        return;
-      }
-      mVsyncEnabled = HwcComposer2D::GetInstance()->EnableVsync(false);
-    }
-
-    virtual bool IsVsyncEnabled() override
-    {
-      MOZ_ASSERT(NS_IsMainThread());
-      return mVsyncEnabled;
-    }
-  private:
-    bool mVsyncEnabled;
-  }; // GonkDisplay
-
+  virtual bool IsVsyncEnabled() override
+  {
+    MOZ_ASSERT(NS_IsMainThread());
+    return mVsyncEnabled;
+  }
 private:
-  virtual ~GonkVsyncSource()
-  {
-  }
-
-  GonkDisplay mGlobalDisplay;
-}; // GonkVsyncSource
+  bool mVsyncEnabled;
+}; // GonkDisplay
 #endif
 
 already_AddRefed<mozilla::gfx::VsyncSource>
@@ -499,14 +481,16 @@ gfxAndroidPlatform::CreateHardwareVsyncSource()
     // L is android version 21, L-MR1 is 22, kit-kat is 19, 20 is kit-kat for
     // wearables.
 #if defined(MOZ_WIDGET_GONK) && (ANDROID_VERSION == 19 || ANDROID_VERSION >= 21)
-    nsRefPtr<GonkVsyncSource> vsyncSource = new GonkVsyncSource();
-    VsyncSource::Display& display = vsyncSource->GetGlobalDisplay();
-    display.EnableVsync();
-    if (!display.IsVsyncEnabled()) {
+    nsRefPtr<VsyncDisplay> display = new GonkDisplay(VsyncSource::kGlobalDisplayID);
+    display->EnableVsync();
+    if (!display->IsVsyncEnabled()) {
         NS_WARNING("Error enabling gonk vsync. Falling back to software vsync");
-        return gfxPlatform::CreateHardwareVsyncSource();
+        return gfxPlatform::CreateSoftwareVsyncSource();
     }
-    display.DisableVsync();
+    display->DisableVsync();
+
+    nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
+    vsyncSource->RegisterDisplay(display);
     return vsyncSource.forget();
 #else
     return gfxPlatform::CreateHardwareVsyncSource();
