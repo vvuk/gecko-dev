@@ -22,6 +22,7 @@
 
 #include "nsServiceManagerUtils.h"
 #include "nsIScreenManager.h"
+#include "nsIUUIDGenerator.h"
 
 #include "mozilla/unused.h"
 #include "mozilla/layers/Compositor.h"
@@ -92,6 +93,11 @@ VRHMDInfo::VRHMDInfo(VRHMDType aType)
 
   mDeviceIndex = VRHMDManager::AllocateDeviceIndex();
   mDeviceName.AssignLiteral("Unknown Device");
+
+  nsCOMPtr<nsIUUIDGenerator> uuidgen = do_GetService("@mozilla.org/uuid-generator;1");
+  MOZ_ASSERT(uuidgen, "Failed to get UUID generator?");
+
+  uuidgen->GenerateUUIDInPlace(&mDisplayID);
 }
 
 

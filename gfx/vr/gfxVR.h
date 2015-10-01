@@ -8,6 +8,7 @@
 
 #include "nsTArray.h"
 #include "nsIScreen.h"
+#include "nsID.h"
 #include "nsString.h"
 #include "nsCOMPtr.h"
 #include "mozilla/nsRefPtr.h"
@@ -176,6 +177,7 @@ public:
   VRHMDType GetType() const { return mType; }
   uint32_t GetDeviceIndex() const { return mDeviceIndex; }
   const nsCString& GetDeviceName() const { return mDeviceName; }
+  const nsID& GetDisplayID() const { return mDisplayID; }
 
   virtual const VRFieldOfView& GetRecommendedEyeFOV(uint32_t whichEye) { return mRecommendedEyeFOV[whichEye]; }
   virtual const VRFieldOfView& GetMaximumEyeFOV(uint32_t whichEye) { return mMaximumEyeFOV[whichEye]; }
@@ -202,6 +204,8 @@ public:
 
   virtual void ZeroSensor() = 0;
 
+  // return the refresh interval (in ms per frame) for this HMD
+  virtual double RefreshInterval() { return 1000.0 / 60.0; }
 
   // if rendering is offloaded
   virtual VRHMDRenderingSupport *GetRenderingSupport() { return nullptr; }
@@ -227,6 +231,7 @@ protected:
   VRHMDConfiguration mConfiguration;
   uint32_t mDeviceIndex;
   nsCString mDeviceName;
+  nsID mDisplayID;
 
   VRFieldOfView mEyeFOV[NumEyes];
   IntSize mEyeResolution;

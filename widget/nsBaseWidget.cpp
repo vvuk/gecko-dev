@@ -1841,6 +1841,18 @@ nsBaseWidget::UnregisterPluginWindowForRemoteUpdates()
 #endif
 }
 
+void
+nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
+{
+  mHMD = aHMD;
+}
+
+mozilla::gfx::VRHMDInfo*
+nsBaseWidget::GetAttachedHMD()
+{
+  return mHMD;
+}
+
 // static
 nsIWidget*
 nsIWidget::LookupRegisteredPluginWindow(uintptr_t aWindowID)
