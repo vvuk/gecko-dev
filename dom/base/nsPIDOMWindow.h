@@ -758,6 +758,9 @@ public:
     return mMarkedCCGeneration;
   }
 
+  // If there's a HMD currently attached to the Window
+  virtual mozilla::gfx::VRHMDInfo* GetVRHMD() { return nullptr; }
+
 protected:
   // The nsPIDOMWindow constructor. The aOuterWindow argument should
   // be null if and only if the created window itself is an outer

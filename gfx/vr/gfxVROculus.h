@@ -21,6 +21,8 @@
 
 namespace mozilla {
 namespace gfx {
+class VsyncDisplay;
+
 namespace impl {
 
 class HMDInfoOculus : public VRHMDInfo, public VRHMDRenderingSupport {
@@ -72,6 +74,8 @@ protected:
   uint32_t mStartCount;
   ovrTrackingState mLastTrackingState;
   int32_t mPerfHudMode;
+
+  nsRefPtr<VsyncDisplay> mVsyncDisplay;
 };
 
 } // namespace impl

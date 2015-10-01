@@ -8,20 +8,21 @@
 #include "prlink.h"
 #include "prmem.h"
 #include "prenv.h"
+#include "gfxPlatform.h"
 #include "gfxPrefs.h"
+#include "gfxUtils.h"
 #include "nsString.h"
+#include "SoftwareVsyncSource.h"
 #include "mozilla/Preferences.h"
-
 #include "mozilla/gfx/Quaternion.h"
+#include "nsServiceManagerUtils.h"
+#include "nsIScreenManager.h"
 
 #ifdef XP_WIN
 #include "../layers/d3d11/CompositorD3D11.h"
 #endif
 
 #include "gfxVROculus.h"
-
-#include "nsServiceManagerUtils.h"
-#include "nsIScreenManager.h"
 
 #ifndef M_PI
 # define M_PI 3.14159265358979323846
@@ -256,6 +257,8 @@ HMDInfoOculus::HMDInfoOculus(ovrHmd aHMD)
   , mStartCount(0)
   , mPerfHudMode(0)
 {
+  MOZ_ASSERT(XRE_IsParentProcess(),
+             "Can only create HMDInfoOculus in XRE parent process!");
   MOZ_ASSERT(sizeof(HMDInfoOculus::DistortionVertex) == sizeof(VRDistortionVertex),
              "HMDInfoOculus::DistortionVertex must match the size of VRDistortionVertex");
 
@@ -279,6 +282,11 @@ HMDInfoOculus::HMDInfoOculus(ovrHmd aHMD)
 
   SetFOV(mRecommendedEyeFOV[Eye_Left], mRecommendedEyeFOV[Eye_Right], 0.01, 10000.0);
 
+  // create a vsync source for this display and register it
+  gfxUtils::GenerateUUID(&mDisplayID);
+  mVsyncDisplay = new SoftwareDisplay(mDisplayID, 1000.0 / mDesc.DisplayRefreshRate);
+  gfxPlatform::GetPlatform()->GetHardwareVsync()->RegisterDisplay(mVsyncDisplay);
+
 #if 1
   int32_t xcoord = 0;
   if (getenv("FAKE_OCULUS_SCREEN")) {
@@ -300,6 +308,12 @@ HMDInfoOculus::HMDInfoOculus(ovrHmd aHMD)
 void
 HMDInfoOculus::Destroy()
 {
+  if (mVsyncDisplay) {
+    gfxPlatform::GetPlatform()->GetHardwareVsync()->UnregisterDisplay(mDisplayID);
+    mVsyncDisplay->Shutdown();
+    mVsyncDisplay = nullptr;
+  }
+
   if (mHMD) {
     ovr_Destroy(mHMD);
     mHMD = nullptr;

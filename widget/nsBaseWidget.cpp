@@ -2176,6 +2176,35 @@ nsBaseWidget::UnregisterPluginWindowForRemoteUpdates()
 #endif
 }
 
+void
+nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
+{
+  VSYNC_LOG("%p SetAttachedHMD %p\n", this, aHMD);
+
+  if (GetVsyncRootWidget() != this) {
+    GetVsyncRootWidget()->SetAttachedHMD(aHMD);
+    return;
+  }
+
+  mHMD = aHMD;
+
+  if (aHMD) {
+    mIncomingVsyncObserver->ObserveDisplayId(aHMD->GetDisplayID());
+  } else {
+    mIncomingVsyncObserver->ObserveDisplayId(mDesiredVsyncDisplayID);
+  }
+}
+
+mozilla::gfx::VRHMDInfo*
+nsBaseWidget::GetAttachedHMD()
+{
+  if (GetVsyncRootWidget() != this) {
+    return GetVsyncRootWidget()->GetAttachedHMD();
+  }
+
+  return mHMD;
+}
+
 //-------------------------------------------------------------------------
 //
 // nsBaseWidget destructor

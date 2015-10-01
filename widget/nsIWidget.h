@@ -1697,6 +1697,12 @@ class nsIWidget : public nsISupports {
 
     virtual void StartAsyncScrollbarDrag(const AsyncDragMetrics& aDragMetrics) = 0;
 
+    /**
+     * If the widget is being displayed on a VR HMD, that HMD is accessible here.
+     */
+    virtual void SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD) {}
+    virtual mozilla::gfx::VRHMDInfo* GetAttachedHMD() { return nullptr; }
+
 private:
   class LongTapInfo
   {
