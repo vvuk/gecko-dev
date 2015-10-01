@@ -2,8 +2,7 @@
 
 # Filenames that should be ignored wherever they appear
 *~
-*.pyc
-*.pyo
+*.py[cod]
 TAGS
 tags
 ID
