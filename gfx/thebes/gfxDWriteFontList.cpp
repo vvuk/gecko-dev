@@ -18,6 +18,7 @@
 #include "nsDirectoryServiceDefs.h"
 #include "nsAppDirectoryServiceDefs.h"
 #include "nsISimpleEnumerator.h"
+#include "gfXUtils.h"
 
 #include "gfxGDIFontList.h"
 
@@ -800,17 +801,7 @@ gfxDWriteFontList::MakePlatformFont(const nsAString& aFontName,
      */
     ffReferenceKey key;
     key.mArray = &newFontData;
-    nsCOMPtr<nsIUUIDGenerator> uuidgen =
-      do_GetService("@mozilla.org/uuid-generator;1");
-    if (!uuidgen) {
-        return nullptr;
-    }
-
-    rv = uuidgen->GenerateUUIDInPlace(&key.mGUID);
-
-    if (NS_FAILED(rv)) {
-        return nullptr;
-    }
+    key.mGUID = gfxUtils::GenerateUUID();
 
     hr = gfxWindowsPlatform::GetPlatform()->GetDWriteFactory()->
         CreateCustomFontFileReference(&key,

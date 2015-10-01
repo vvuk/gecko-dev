@@ -7,6 +7,7 @@
 #include "mozilla/BinarySearch.h"
 
 #include "gfxFontUtils.h"
+#include "gfxUtils.h"
 
 #include "nsServiceManagerUtils.h"
 
@@ -17,7 +18,6 @@
 #include "mozilla/Snprintf.h"
 
 #include "nsCOMPtr.h"
-#include "nsIUUIDGenerator.h"
 #include "nsIUnicodeDecoder.h"
 
 #include "harfbuzz/hb.h"
@@ -857,17 +857,7 @@ void gfxFontUtils::GetPrefsFontList(const char *aPrefName,
 
 nsresult gfxFontUtils::MakeUniqueUserFontName(nsAString& aName)
 {
-    nsCOMPtr<nsIUUIDGenerator> uuidgen =
-      do_GetService("@mozilla.org/uuid-generator;1");
-    NS_ENSURE_TRUE(uuidgen, NS_ERROR_OUT_OF_MEMORY);
-
-    nsID guid;
-
-    NS_ASSERTION(sizeof(guid) * 2 <= MAX_B64_LEN, "size of nsID has changed!");
-
-    nsresult rv = uuidgen->GenerateUUIDInPlace(&guid);
-    NS_ENSURE_SUCCESS(rv, rv);
-
+    nsID guid = gfxUtils::GenerateUUID();
     char guidB64[MAX_B64_LEN] = {0};
 
     if (!PL_Base64Encode(reinterpret_cast<char*>(&guid), sizeof(guid), guidB64))
