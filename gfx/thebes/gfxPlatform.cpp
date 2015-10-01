@@ -2028,19 +2028,20 @@ gfxPlatform::UsesOffMainThreadCompositing()
   return result;
 }
 
-/***
- * The preference "layout.frame_rate" has 3 meanings depending on the value:
- *
- * -1 = Auto (default), use hardware vsync or software vsync @ 60 hz if hw vsync fails.
- *  0 = ASAP mode - used during talos testing.
- *  X = Software vsync at a rate of X times per second.
- */
-already_AddRefed<mozilla::gfx::VsyncSource>
+already_AddRefed<VsyncSource>
 gfxPlatform::CreateHardwareVsyncSource()
 {
   NS_WARNING("Hardware Vsync support not yet implemented. Falling back to software timers");
-  nsRefPtr<mozilla::gfx::VsyncSource> softwareVsync = new SoftwareVsyncSource();
-  return softwareVsync.forget();
+  return CreateSoftwareVsyncSource();
+}
+
+already_AddRefed<VsyncSource>
+gfxPlatform::CreateSoftwareVsyncSource()
+{
+  nsRefPtr<SoftwareDisplay> display = new SoftwareDisplay(VsyncSource::kGlobalDisplayID);
+  nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
+  vsyncSource->RegisterDisplay(display);
+  return vsyncSource.forget();
 }
 
 /* static */ bool
@@ -2051,7 +2052,7 @@ gfxPlatform::IsInLayoutAsapMode()
   // the second is that the compositor goes ASAP and the refresh driver
   // goes at whatever the configurated rate is. This only checks the version
   // talos uses, which is the refresh driver and compositor are in lockstep.
-  return Preferences::GetInt("layout.frame_rate", -1) == 0;
+  return gfxPrefs::LayoutFrameRate();
 }
 
 /* static */ bool

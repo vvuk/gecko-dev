@@ -41,7 +41,7 @@ class   nsIScreen;
 class   nsIRunnable;
 
 namespace mozilla {
-class CompositorVsyncDispatcher;
+class VsyncObserver;
 namespace dom {
 class TabChild;
 } // namespace dom
@@ -60,6 +60,8 @@ struct ScrollableLayerGuid;
 namespace gfx {
 class DrawTarget;
 class SourceSurface;
+class VRHMDInfo;
+class VsyncObserver;
 } // namespace gfx
 namespace widget {
 class TextEventDispatcher;
@@ -329,7 +331,6 @@ class nsIWidget : public nsISupports {
     typedef mozilla::widget::InputContextAction InputContextAction;
     typedef mozilla::widget::SizeConstraints SizeConstraints;
     typedef mozilla::widget::TextEventDispatcher TextEventDispatcher;
-    typedef mozilla::CompositorVsyncDispatcher CompositorVsyncDispatcher;
 
     // Used in UpdateThemeGeometries.
     struct ThemeGeometry {
@@ -504,9 +505,26 @@ class nsIWidget : public nsISupports {
     virtual float GetDPI() = 0;
 
     /**
-     * Returns the CompositorVsyncDispatcher associated with this widget
+     * Add or remove a vsync observer for this widget's vsync signal.
+     * These calls are safe to call from any thread.  The vsync
+     * notification may also arrive on any thread -- if your observer
+     * needs to execute on the main thread, make sure it forwards an
+     * event to the main thread.  It is also safe to add/remove
+     * observers from a vsync observer callback.
+     *
+     * AddVsyncObserver returns true if the observer was successfully added;
+     * false if it fails.
+     *
+     * RemoveVsyncObserver returns true if the observer was found and removed;
+     * false if it was not in the list.
      */
-    virtual CompositorVsyncDispatcher* GetCompositorVsyncDispatcher() = 0;
+    virtual bool AddVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) { return false; }
+    virtual bool RemoveVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) { return false; }
+
+    /**
+     * Return the nsID for the display that this widget is observing vsync from.
+     */
+    virtual nsID GetVsyncDisplayIdentifier();
 
     /**
      * Return the default scale factor for the window. This is the

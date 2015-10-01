@@ -20,12 +20,16 @@ using namespace ipc;
 namespace layout {
 
 /*static*/ already_AddRefed<VsyncParent>
-VsyncParent::Create()
+VsyncParent::Create(const nsID& aDisplayID)
 {
   AssertIsOnBackgroundThread();
   nsRefPtr<gfx::VsyncSource> vsyncSource = gfxPlatform::GetPlatform()->GetHardwareVsync();
   nsRefPtr<VsyncParent> vsyncParent = new VsyncParent();
-  vsyncParent->mVsyncDispatcher = vsyncSource->GetRefreshTimerVsyncDispatcher();
+  vsyncParent->mVsyncDisplay = vsyncSource->GetDisplay(aDisplayID);
+  if (!vsyncParent->mVsyncDisplay) {
+    NS_WARNING("Couldn't obtain vsync source for given display ID, using global display instead!");
+    vsyncParent->mVsyncDisplay = vsyncSource->GetGlobalDisplay();
+  }
   return vsyncParent.forget();
 }
 
@@ -77,7 +81,7 @@ VsyncParent::RecvObserve()
 {
   AssertIsOnBackgroundThread();
   if (!mObservingVsync) {
-    mVsyncDispatcher->AddChildRefreshTimer(this);
+    mVsyncDisplay->AddVsyncObserver(this);
     mObservingVsync = true;
     return true;
   }
@@ -89,7 +93,7 @@ VsyncParent::RecvUnobserve()
 {
   AssertIsOnBackgroundThread();
   if (mObservingVsync) {
-    mVsyncDispatcher->RemoveChildRefreshTimer(this);
+    mVsyncDisplay->RemoveVsyncObserver(this);
     mObservingVsync = false;
     return true;
   }
@@ -102,9 +106,9 @@ VsyncParent::ActorDestroy(ActorDestroyReason aReason)
   MOZ_ASSERT(!mDestroyed);
   AssertIsOnBackgroundThread();
   if (mObservingVsync) {
-    mVsyncDispatcher->RemoveChildRefreshTimer(this);
+    mVsyncDisplay->RemoveVsyncObserver(this);
   }
-  mVsyncDispatcher = nullptr;
+  mVsyncDisplay = nullptr;
   mDestroyed = true;
 }
 

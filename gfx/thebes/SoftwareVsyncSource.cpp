@@ -1,4 +1,4 @@
-/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 2 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -9,67 +9,63 @@
 #include "gfxPlatform.h"
 #include "nsThreadUtils.h"
 
-SoftwareVsyncSource::SoftwareVsyncSource()
-{
-  MOZ_ASSERT(NS_IsMainThread());
-  mGlobalDisplay = new SoftwareDisplay();
-}
+using namespace mozilla;
 
-SoftwareVsyncSource::~SoftwareVsyncSource()
-{
-  MOZ_ASSERT(NS_IsMainThread());
-  mGlobalDisplay->Shutdown();
-  mGlobalDisplay = nullptr;
-}
-
-SoftwareDisplay::SoftwareDisplay()
-  : mCurrentVsyncTask(nullptr)
+SoftwareDisplay::SoftwareDisplay(const nsID& aDisplayID, double aInterval)
+  : VsyncDisplay(aDisplayID)
+  , mCurrentVsyncTask(nullptr)
   , mVsyncEnabled(false)
 {
-  // Mimic 60 fps
   MOZ_ASSERT(NS_IsMainThread());
-  const double rate = 1000.0 / (double) gfxPlatform::GetSoftwareVsyncRate();
-  mVsyncRate = mozilla::TimeDuration::FromMilliseconds(rate);
+  mVsyncRate = mozilla::TimeDuration::FromMilliseconds(aInterval);
   mVsyncThread = new base::Thread("SoftwareVsyncThread");
   MOZ_RELEASE_ASSERT(mVsyncThread->Start(), "Could not start software vsync thread");
 }
 
-SoftwareDisplay::~SoftwareDisplay() {}
+SoftwareDisplay::~SoftwareDisplay()
+{
+}
 
 void
 SoftwareDisplay::EnableVsync()
 {
   MOZ_ASSERT(mVsyncThread->IsRunning());
-  if (NS_IsMainThread()) {
-    if (mVsyncEnabled) {
-      return;
-    }
-    mVsyncEnabled = true;
+  MOZ_ASSERT(NS_IsMainThread());
 
-    mVsyncThread->message_loop()->PostTask(FROM_HERE,
-      NewRunnableMethod(this, &SoftwareDisplay::EnableVsync));
+  if (mVsyncEnabled) {
     return;
   }
 
+  mVsyncEnabled = true;
+  mVsyncThread->message_loop()->PostTask(FROM_HERE,
+    NewRunnableMethod(this, &SoftwareDisplay::InternalEnableVsync));
+}
+
+void
+SoftwareDisplay::InternalEnableVsync()
+{
   MOZ_ASSERT(IsInSoftwareVsyncThread());
-  NotifyVsync(mozilla::TimeStamp::Now());
+  OnVsync(mozilla::TimeStamp::Now());
 }
 
 void
 SoftwareDisplay::DisableVsync()
 {
   MOZ_ASSERT(mVsyncThread->IsRunning());
-  if (NS_IsMainThread()) {
-    if (!mVsyncEnabled) {
-      return;
-    }
-    mVsyncEnabled = false;
+  MOZ_ASSERT(NS_IsMainThread());
 
-    mVsyncThread->message_loop()->PostTask(FROM_HERE,
-      NewRunnableMethod(this, &SoftwareDisplay::DisableVsync));
+  if (!mVsyncEnabled) {
     return;
   }
 
+  mVsyncEnabled = false;
+  mVsyncThread->message_loop()->PostTask(FROM_HERE,
+    NewRunnableMethod(this, &SoftwareDisplay::InternalDisableVsync));
+}
+
+void
+SoftwareDisplay::InternalDisableVsync()
+{
   MOZ_ASSERT(IsInSoftwareVsyncThread());
   if (mCurrentVsyncTask) {
     mCurrentVsyncTask->Cancel();
@@ -91,7 +87,7 @@ SoftwareDisplay::IsInSoftwareVsyncThread()
 }
 
 void
-SoftwareDisplay::NotifyVsync(mozilla::TimeStamp aVsyncTimestamp)
+SoftwareDisplay::OnVsync(mozilla::TimeStamp aVsyncTimestamp)
 {
   MOZ_ASSERT(IsInSoftwareVsyncThread());
 
@@ -105,7 +101,7 @@ SoftwareDisplay::NotifyVsync(mozilla::TimeStamp aVsyncTimestamp)
     displayVsyncTime = now;
   }
 
-  Display::NotifyVsync(displayVsyncTime);
+  VsyncDisplay::OnVsync(displayVsyncTime);
 
   // Prevent skew by still scheduling based on the original
   // vsync timestamp
@@ -124,7 +120,7 @@ SoftwareDisplay::ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp)
   }
 
   mCurrentVsyncTask = NewRunnableMethod(this,
-      &SoftwareDisplay::NotifyVsync,
+      &SoftwareDisplay::OnVsync,
       nextVsync);
 
   mVsyncThread->message_loop()->PostDelayedTask(FROM_HERE,
@@ -136,7 +132,10 @@ void
 SoftwareDisplay::Shutdown()
 {
   MOZ_ASSERT(NS_IsMainThread());
-  DisableVsync();
-  mVsyncThread->Stop();
-  delete mVsyncThread;
+  if (mVsyncThread) {
+    DisableVsync();
+    mVsyncThread->Stop();
+    delete mVsyncThread;
+    mVsyncThread = nullptr;
+  }
 }
