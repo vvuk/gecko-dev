@@ -62,10 +62,18 @@ VsyncDisplay::RemoveVsyncObserver(VsyncObserver *aObserver)
 void
 VsyncDisplay::OnVsync(TimeStamp aVsyncTimestamp)
 {
+  nsAutoTArray<nsRefPtr<VsyncObserver>,8> observers;
+
   // Called on the vsync thread
-  MonitorAutoLock lock(mObserversMonitor);
-  for (size_t i = 0; i < mVsyncObservers.Length(); ++i) {
-    mVsyncObservers[i]->NotifyVsync(aVsyncTimestamp);
+  {
+    // make a copy of the observers, so that they can remove themselves
+    // from the array if needed while being notified
+    MonitorAutoLock lock(mObserversMonitor);
+    observers.AppendElements(mVsyncObservers);
+  }
+
+  for (size_t i = 0; i < observers.Length(); ++i) {
+    observers[i]->NotifyVsync(aVsyncTimestamp);
   }
 }
 

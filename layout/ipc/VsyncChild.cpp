@@ -16,12 +16,12 @@ namespace mozilla {
 namespace layout {
 
 VsyncChild::VsyncChild(const nsID& aDisplayIdentifier)
-  : mDisplayIdentifier(aDisplayIdentifier)
+  : VsyncDisplay(aDisplayIdentifier)
   , mObservingVsync(false)
   , mIsShutdown(false)
 {
   char idstr[NSID_LENGTH];
-  aDisplayIdentifier.ToProvidedString(idstr);
+  mID.ToProvidedString(idstr);
   VSYNC_LOG("[%s]: VsyncChild %p created for display ID %s\n", PARENT_STR, this, idstr);
 
   MOZ_ASSERT(NS_IsMainThread());
@@ -31,6 +31,18 @@ VsyncChild::~VsyncChild()
 {
   VSYNC_LOG("[%s]: VsyncChild %p destroyed\n", PARENT_STR, this);
   MOZ_ASSERT(NS_IsMainThread());
+}
+
+void
+VsyncChild::EnableVsync()
+{
+  SendObserve();
+}
+
+void
+VsyncChild::DisableVsync()
+{
+  SendUnobserve();
 }
 
 bool
@@ -63,26 +75,20 @@ VsyncChild::ActorDestroy(ActorDestroyReason aActorDestroyReason)
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(!mIsShutdown);
   mIsShutdown = true;
-  mObserver = nullptr;
   VSYNC_LOG("[%s]: VsyncChild %p actor destroyed\n", PARENT_STR, this);
 }
 
 bool
 VsyncChild::RecvNotify(const TimeStamp& aVsyncTimestamp)
 {
+  // XXX why is this on the main thread????
+  // isn't this supposed to be on the PBackground thread?!
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(!mIsShutdown);
-  if (mObservingVsync && mObserver) {
-    mObserver->NotifyVsync(aVsyncTimestamp);
+  if (mObservingVsync) {
+    OnVsync(aVsyncTimestamp);
   }
   return true;
-}
-
-void
-VsyncChild::SetVsyncObserver(gfx::VsyncObserver* aVsyncObserver)
-{
-  MOZ_ASSERT(NS_IsMainThread());
-  mObserver = aVsyncObserver;
 }
 
 } // namespace layout

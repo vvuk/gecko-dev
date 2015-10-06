@@ -1083,10 +1083,9 @@ NS_IMPL_ISUPPORTS(VsyncChildCreateCallback, nsIIPCBackgroundChildCreateCallback)
 class VsyncForwardingObserver final : public mozilla::gfx::VsyncObserver {
 public:
   VsyncForwardingObserver(nsBaseWidget *aWidget)
-    : mWidget(aWidget)
+    : mPaused(false)
+    , mWidget(aWidget)
     , mObservedWidget(nullptr)
-    , mObservedVsyncChild(nullptr)
-    , mObservedVsyncDirectly(false)
   { }
   
   bool NotifyVsync(mozilla::TimeStamp aVsyncTimestamp) override {
@@ -1096,66 +1095,28 @@ public:
   }
 
   void Pause() {
-    if (mObservedWidget) {
-      mObservedWidget->RemoveVsyncObserver(this);
+    if (mPaused)
       return;
-    }
 
-    if (mObservedVsyncChild) {
-      mObservedVsyncChild->SendUnobserve();
-      mObservedVsyncChild->SetVsyncObserver(nullptr);
-      return;
-    }
+    mPaused = true;
 
-    if (mObservedVsyncDirectly) {
-      MOZ_ASSERT(XRE_IsParentProcess());
-      mObservedDisplay->RemoveVsyncObserver(this);
-      return;
-    }
-
-    if (mObservedHMD) {
-      mObservedDisplay->RemoveVsyncObserver(this);
-      return;
-    }
+    PauseInternal();
   }
 
   void Unpause() {
+    if (!mPaused)
+      return;
+
+    mPaused = false;
+
     if (mObservedWidget) {
       mObservedWidget->AddVsyncObserver(this);
       return;
     }
 
-    if (mObservedVsyncChild) {
-      mObservedVsyncChild->SetVsyncObserver(this);
-      mObservedVsyncChild->SendObserve();
-      return;
-    }
-
-    if (mObservedVsyncDirectly) {
-      MOZ_ASSERT(XRE_IsParentProcess());
+    if (mObservedDisplay) {
       mObservedDisplay->AddVsyncObserver(this);
       return;
-    }
-
-    if (mObservedHMD) {
-      mObservedDisplay->AddVsyncObserver(this);
-      return;
-    }
-  }
-
-  void Unobserve() {
-    Pause();
-
-    mObservedWidget = nullptr;
-    mObservedVsyncChild = nullptr;
-    mObservedDisplay = nullptr;
-    mObservedVsyncDirectly = false;
-    mObservedHMD = nullptr;
-
-    if (mObservedSoftwareDisplayForShutdown) {
-      /* hack */
-      mObservedSoftwareDisplayForShutdown->Shutdown();
-      mObservedSoftwareDisplayForShutdown = nullptr;
     }
   }
 
@@ -1165,46 +1126,38 @@ public:
 
     Unobserve();
 
-    mObservedWidget->AddVsyncObserver(this);
     mObservedWidget = aWidget;
+    if (!mPaused)
+      mObservedWidget->AddVsyncObserver(this);
   }
 
-  void ObserveVsync(layout::VsyncChild *aVsyncChild) {
-    if (mObservedVsyncChild == aVsyncChild)
+  void ObserveDisplay(gfx::VsyncDisplay* aDisplay) {
+    if (mObservedDisplay == aDisplay)
       return;
 
     Unobserve();
 
-    aVsyncChild->SetVsyncObserver(this);
-    aVsyncChild->SendObserve();
-    mObservedVsyncChild = aVsyncChild;
+    mObservedDisplay = aDisplay;
+    if (!mPaused)
+      mObservedDisplay->AddVsyncObserver(this);
   }
 
-  void ObserveDisplay(const nsID& aVsyncDisplayID) {
-    if (mObservedVsyncDisplayID == aVsyncDisplayID)
-      return;
-
-    Unobserve();
-
-    mObservedVsyncDisplayID = aVsyncDisplayID;
-
+  void ObserveDisplayId(const nsID& aVsyncDisplayID) {
     if (XRE_IsParentProcess()) {
       // Parent; we can grab the vsync display directly
-      mObservedDisplay =
-        gfxPlatform::GetPlatform()->GetHardwareVsync()->GetDisplay(mObservedVsyncDisplayID);
-      MOZ_ASSERT(mObservedDisplay);
-      mObservedDisplay->AddVsyncObserver(this);
-      mObservedVsyncDirectly = true;
+      nsRefPtr<gfx::VsyncDisplay> display =
+        gfxPlatform::GetPlatform()->GetHardwareVsync()->GetDisplay(aVsyncDisplayID);
+      ObserveDisplay(display);
     } else {
       // Child
       PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
       if (backgroundChild) {
         // If we already have PBackground connection, create Vsync actor directly without going
         // through a callback
-        VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, mObservedVsyncDisplayID, this);
+        VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, aVsyncDisplayID, this);
       } else {
         // Otherwise, set up a callback for when PBackground is created
-        nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(mObservedVsyncDisplayID, this);
+        nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(aVsyncDisplayID, this);
         if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
           MOZ_CRASH("PVsync actor create failed!");
         }
@@ -1216,18 +1169,16 @@ public:
     if (mObservedHMD == aHMD)
       return;
 
-    Unobserve();
-
     // XXX we create this here but we should be looking it up.  We don't register it
     // since we're just going to use it ourselves only for now.
     mObservedSoftwareDisplayForShutdown = new SoftwareDisplay(aHMD->GetDisplayID(), aHMD->RefreshInterval());
-    mObservedDisplay = mObservedSoftwareDisplayForShutdown;
-    mObservedDisplay->AddVsyncObserver(this);
-
     mObservedHMD = aHMD;
+
+    ObserveDisplay(mObservedSoftwareDisplayForShutdown);
   }
 
   void Destroy() {
+    Pause();
     Unobserve();
     mWidget = nullptr;
   }
@@ -1241,10 +1192,6 @@ public:
       return mObservedWidget->GetVsyncDisplayIdentifier();
     }
 
-    if (mObservedVsyncChild) {
-      return mObservedVsyncChild->DisplayIdentifier();
-    }
-
     NS_WARNING("VsyncForwardingObserver::GetObservedID -- not sure what I'm observing, returning kGlobalDisplay!");
     return gfx::VsyncSource::kGlobalDisplayID;
   }
@@ -1254,18 +1201,44 @@ protected:
     Destroy();
   }
 
+  void Unobserve() {
+    // Call PauseInternal directly, because we don't
+    // want to actually changed mPaused
+    PauseInternal();
+
+    mObservedWidget = nullptr;
+    mObservedDisplay = nullptr;
+    mObservedHMD = nullptr;
+
+    if (mObservedSoftwareDisplayForShutdown) {
+      /* hack */
+      mObservedSoftwareDisplayForShutdown->Shutdown();
+      mObservedSoftwareDisplayForShutdown = nullptr;
+    }
+  }
+
+  void PauseInternal() {
+    if (mObservedWidget) {
+      mObservedWidget->RemoveVsyncObserver(this);
+      return;
+    }
+
+    if (mObservedDisplay) {
+      mObservedDisplay->RemoveVsyncObserver(this);
+      return;
+    }
+  }
+
+  bool mPaused;
   // This is the owner widget for this vsync observer.  It always gets
   // deleted before the widget goes away.
   nsBaseWidget *mWidget;
   // XXX can this be a bare pointer?
   nsIWidget* mObservedWidget;
-  nsRefPtr<layout::VsyncChild> mObservedVsyncChild;
   nsRefPtr<gfx::VRHMDInfo> mObservedHMD;
-  bool mObservedVsyncDirectly;
   nsRefPtr<gfx::VsyncDisplay> mObservedDisplay;
   // We need to call Shutdown on SoftwareDisplays for proper cleanup
   nsRefPtr<SoftwareDisplay> mObservedSoftwareDisplayForShutdown;
-  nsID mObservedVsyncDisplayID;
 };
 
 /* static */ void
@@ -1278,6 +1251,7 @@ VsyncChildCreateCallback::CreateVsyncActor(PBackgroundChild* aPBackgroundChild,
 
   layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(aDisplayID);
   layout::VsyncChild* child = static_cast<layout::VsyncChild*>(actor);
+  gfx::VsyncDisplay* display = static_cast<gfx::VsyncDisplay*>(child);
 
 #if 1
   char idstr[NSID_LENGTH];
@@ -1285,7 +1259,7 @@ VsyncChildCreateCallback::CreateVsyncActor(PBackgroundChild* aPBackgroundChild,
   VSYNC_LOG("[%s]: Vsync actor %p created for display ID %s\n", PARENT_OR_CHILD, child, idstr);
 #endif
 
-  aObserver->ObserveVsync(child);
+  aObserver->ObserveDisplay(display);
 }
 
 // impl for nsIWidget's generic version
@@ -1337,7 +1311,7 @@ nsBaseWidget::UpdateVsyncObserver()
     return;
   }
 
-  mIncomingVsyncObserver->ObserveDisplay(mDesiredVsyncDisplayID);
+  mIncomingVsyncObserver->ObserveDisplayId(mDesiredVsyncDisplayID);
 
 #if 1
   char idstr[NSID_LENGTH];
@@ -1360,7 +1334,7 @@ nsBaseWidget::AddVsyncObserver(gfx::VsyncObserver *aObserver)
       unpause = mVsyncObservers.Length() == 1;
     }
   }
-  if (unpause) {
+  if (unpause && mIncomingVsyncObserver) {
     mIncomingVsyncObserver->Unpause();
   }
   return true;
@@ -1379,7 +1353,7 @@ nsBaseWidget::RemoveVsyncObserver(gfx::VsyncObserver *aObserver)
     // Pause if the last observer was removed
     pause = mVsyncObservers.Length() == 0;
   }
-  if (pause) {
+  if (pause && mIncomingVsyncObserver) {
     mIncomingVsyncObserver->Pause();
   }
   return result;
@@ -1403,7 +1377,7 @@ void
 nsBaseWidget::ShutdownVsync()
 {
   if (mIncomingVsyncObserver) {
-    mIncomingVsyncObserver->Unobserve();
+    mIncomingVsyncObserver->Destroy();
     mIncomingVsyncObserver = nullptr;
   }
 }
