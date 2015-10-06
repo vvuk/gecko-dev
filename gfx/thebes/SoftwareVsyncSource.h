@@ -19,8 +19,8 @@ class CancelableTask;
 class SoftwareDisplay final : public mozilla::gfx::VsyncDisplay
 {
 public:
-  SoftwareDisplay(const nsID& aDisplayID,
-                  double aInterval = 1000.0 / 60.0);
+  explicit SoftwareDisplay(const nsID& aDisplayID,
+                           double aInterval = 1000.0 / 60.0);
   virtual void EnableVsync() override;
   virtual void DisableVsync() override;
   virtual bool IsVsyncEnabled() override;

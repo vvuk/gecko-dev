@@ -1089,7 +1089,7 @@ NS_IMPL_ISUPPORTS(VsyncChildCreateCallback, nsIIPCBackgroundChildCreateCallback)
 
 class VsyncForwardingObserver final : public mozilla::gfx::VsyncObserver {
 public:
-  VsyncForwardingObserver(nsBaseWidget *aWidget)
+  explicit VsyncForwardingObserver(nsBaseWidget *aWidget)
     : mPaused(false)
     , mWidget(aWidget)
     , mObservedWidget(nullptr)

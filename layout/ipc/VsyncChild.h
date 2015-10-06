@@ -37,7 +37,7 @@ public:
   const nsID& DisplayIdentifier() const { return mDisplayIdentifier; }
 
 private:
-  VsyncChild(const nsID& aDisplayIdentifier);
+  explicit VsyncChild(const nsID& aDisplayIdentifier);
   virtual ~VsyncChild();
 
   // Notify the other end whether we want to receive vsync events. We
