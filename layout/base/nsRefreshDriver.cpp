@@ -107,8 +107,8 @@ public:
   
 public:
   RefreshDriverTimer()
-    : mLastFireEpoch(0)
-    , mTimerType(eTimerUnknown)
+    : mTimerType(eTimerUnknown)
+    , mLastFireEpoch(0)
   {
   }
 
@@ -300,9 +300,9 @@ class WidgetVsyncRefreshDriverTimer :
 {
 public:
   WidgetVsyncRefreshDriverTimer(nsIWidget *aWidget)
-    : mWidget(aWidget)
-    , mRefreshTickLock("WidgetVsync RefreshTickLock")
+    : mRefreshTickLock("WidgetVsync RefreshTickLock")
     , mProcessedVsync(true)
+    , mWidget(aWidget)
   {
     MOZ_ASSERT(NS_IsMainThread());
 

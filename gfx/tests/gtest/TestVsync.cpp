@@ -89,23 +89,6 @@ protected:
   nsRefPtr<VsyncSource> mVsyncSource;
 };
 
-static void
-FlushMainThreadLoop()
-{
-  // Some tasks are pushed onto the main thread when adding vsync observers
-  // This function will ensure all tasks are executed on the main thread
-  // before returning.
-  nsCOMPtr<nsIThread> mainThread;
-  nsresult rv = NS_GetMainThread(getter_AddRefs(mainThread));
-  ASSERT_TRUE(NS_SUCCEEDED(rv));
-
-  rv = NS_OK;
-  bool processed = true;
-  while (processed && NS_SUCCEEDED(rv)) {
-    rv = mainThread->ProcessNextEvent(false, &processed);
-  }
-}
-
 // Tests that we can enable/disable vsync notifications
 TEST_F(VsyncTester, EnableVsync)
 {

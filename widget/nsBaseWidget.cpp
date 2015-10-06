@@ -157,10 +157,10 @@ NS_IMPL_ISUPPORTS(nsBaseWidget, nsIWidget, nsISupportsWeakReference)
 //-------------------------------------------------------------------------
 
 nsBaseWidget::nsBaseWidget()
-: mWidgetListener(nullptr)
+: mVsyncObserversLock("Widget vsync observer lock")
+, mWidgetListener(nullptr)
 , mAttachedWidgetListener(nullptr)
 , mPreviouslyAttachedWidgetListener(nullptr)
-, mVsyncObserversLock("Widget vsync observer lock")
 , mLayerManager(nullptr)
 , mCursor(eCursor_standard)
 , mBorderStyle(eBorderStyle_none)

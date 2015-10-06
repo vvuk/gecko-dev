@@ -41,7 +41,6 @@ class   nsIScreen;
 class   nsIRunnable;
 
 namespace mozilla {
-class VsyncObserver;
 namespace dom {
 class TabChild;
 } // namespace dom

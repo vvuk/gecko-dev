@@ -14,8 +14,6 @@
 #include "nsID.h"
 
 namespace mozilla {
-class VsyncObserver;
-
 namespace gfx {
 
 class VsyncDisplay;
