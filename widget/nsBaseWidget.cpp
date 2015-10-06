@@ -114,6 +114,8 @@ int32_t nsIWidget::sPointerIdCounter = 0;
 /*static*/ uint64_t AutoObserverNotifier::sObserverId = 0;
 /*static*/ nsDataHashtable<nsUint64HashKey, nsCOMPtr<nsIObserver>> AutoObserverNotifier::sSavedObservers;
 
+static nsRefPtrHashtable<nsIDHashKey, layout::VsyncChild>* sVsyncChildTable;
+
 namespace mozilla {
 namespace widget {
 
@@ -192,6 +194,11 @@ nsBaseWidget::nsBaseWidget()
     sPluginWidgetList = new nsRefPtrHashtable<nsVoidPtrHashKey, nsIWidget>();
   }
 #endif
+
+  if (!sVsyncChildTable) {
+    sVsyncChildTable = new nsRefPtrHashtable<nsIDHashKey, layout::VsyncChild>();
+  }
+
   mShutdownObserver = new WidgetShutdownObserver(this);
   mDesiredVsyncDisplayID = gfx::VsyncSource::kGlobalDisplayID;
 }
@@ -1087,7 +1094,7 @@ public:
     , mWidget(aWidget)
     , mObservedWidget(nullptr)
   { }
-  
+
   bool NotifyVsync(mozilla::TimeStamp aVsyncTimestamp) override {
     if (mWidget)
       mWidget->ForwardVsyncNotification(aVsyncTimestamp);
@@ -1143,24 +1150,35 @@ public:
   }
 
   void ObserveDisplayId(const nsID& aVsyncDisplayID) {
+    nsRefPtr<gfx::VsyncDisplay> display;
     if (XRE_IsParentProcess()) {
       // Parent; we can grab the vsync display directly
-      nsRefPtr<gfx::VsyncDisplay> display =
-        gfxPlatform::GetPlatform()->GetHardwareVsync()->GetDisplay(aVsyncDisplayID);
+      display = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetDisplay(aVsyncDisplayID);
       ObserveDisplay(display);
+      return;
+    }
+
+    // Child
+
+    // first check if we already have a VsyncChild for the display id
+    display = sVsyncChildTable->GetWeak(aVsyncDisplayID);
+    if (display) {
+      // Yes? Great; observe it and move on.
+      ObserveDisplay(display);
+      return;
+    }
+
+    // No? Set up a new VsyncChild via PBackground.
+    PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
+    if (backgroundChild) {
+      // If we already have PBackground connection, create Vsync actor directly without going
+      // through a callback
+      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, aVsyncDisplayID, this);
     } else {
-      // Child
-      PBackgroundChild* backgroundChild = BackgroundChild::GetForCurrentThread();
-      if (backgroundChild) {
-        // If we already have PBackground connection, create Vsync actor directly without going
-        // through a callback
-        VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, aVsyncDisplayID, this);
-      } else {
-        // Otherwise, set up a callback for when PBackground is created
-        nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(aVsyncDisplayID, this);
-        if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
-          MOZ_CRASH("PVsync actor create failed!");
-        }
+      // Otherwise, set up a callback for when PBackground is created
+      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(aVsyncDisplayID, this);
+      if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
+        MOZ_CRASH("PVsync actor create failed!");
       }
     }
   }
@@ -1249,15 +1267,25 @@ VsyncChildCreateCallback::CreateVsyncActor(PBackgroundChild* aPBackgroundChild,
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(aPBackgroundChild);
 
-  layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(aDisplayID);
-  layout::VsyncChild* child = static_cast<layout::VsyncChild*>(actor);
-  gfx::VsyncDisplay* display = static_cast<gfx::VsyncDisplay*>(child);
+  // There is a chance we issued multiple callbacks for the same display ID,
+  // especially on startup while PBackground is still being set up.  Check that
+  // here, and avoid creating an unnecessary child.
+  nsRefPtr<layout::VsyncChild> child = sVsyncChildTable->GetWeak(aDisplayID);
+  if (!child) {
+    // no, we need to construct it
+    layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(aDisplayID);
+    child = static_cast<layout::VsyncChild*>(actor);
+    // add it to the table
+    sVsyncChildTable->Put(aDisplayID, child);
 
 #if 1
-  char idstr[NSID_LENGTH];
-  aDisplayID.ToProvidedString(idstr);
-  VSYNC_LOG("[%s]: Vsync actor %p created for display ID %s\n", PARENT_OR_CHILD, child, idstr);
+    char idstr[NSID_LENGTH];
+    aDisplayID.ToProvidedString(idstr);
+    VSYNC_LOG("[%s]: Vsync actor %p created for display ID %s\n", PARENT_OR_CHILD, child.get(), idstr);
 #endif
+  }
+
+  gfx::VsyncDisplay* display = static_cast<gfx::VsyncDisplay*>(child.get());
 
   aObserver->ObserveDisplay(display);
 }
@@ -1379,6 +1407,10 @@ nsBaseWidget::ShutdownVsync()
   if (mIncomingVsyncObserver) {
     mIncomingVsyncObserver->Destroy();
     mIncomingVsyncObserver = nullptr;
+  }
+  if (sVsyncChildTable) {
+    delete sVsyncChildTable;
+    sVsyncChildTable = nullptr;
   }
 }
 
