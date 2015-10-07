@@ -623,7 +623,10 @@ gfxPlatform::Shutdown()
 
         gPlatform->mMemoryPressureObserver = nullptr;
         gPlatform->mSkiaGlue = nullptr;
-        gPlatform->mVsyncSource = nullptr;
+        if (gPlatform->mVsyncSource) {
+          gPlatform->mVsyncSource->Shutdown();
+          gPlatform->mVsyncSource = nullptr;
+        }
     }
 
 #ifdef MOZ_WIDGET_ANDROID

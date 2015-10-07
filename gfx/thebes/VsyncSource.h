@@ -59,8 +59,10 @@ public:
     return GetDisplay(kGlobalDisplayID);
   }
 
+  virtual void Shutdown();
+
 protected:
-  virtual ~VsyncSource() {}
+  virtual ~VsyncSource();
 
   // return index of aDisplayID in mDisplays, or -1 if not found.
   // Assumes mDisplaysMonitor is locked.
@@ -104,6 +106,8 @@ public:
   virtual void EnableVsync() = 0;
   virtual void DisableVsync() = 0;
   virtual bool IsVsyncEnabled() = 0;
+
+  virtual void Shutdown() { }
 
 protected:
   // constructs a new Display using the given identifier

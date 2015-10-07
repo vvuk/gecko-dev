@@ -15,11 +15,6 @@ namespace gfx {
 /* static */ const nsID VsyncSource::kGlobalDisplayID =
   { 0xd87dab51, 0x85cd, 0x475b, { 0x9a, 0x9c, 0xb7, 0x48, 0x3a, 0x46, 0x2c, 0xca } };
 
-VsyncSource::VsyncSource()
-  : mDisplaysMonitor("VsyncSource displays monitor")
-{
-}
-
 VsyncDisplay::VsyncDisplay(const nsID& aID)
   : mID(aID)
   , mObserversMonitor("VsyncSource Display observers mutation monitor")
@@ -110,6 +105,16 @@ VsyncDisplay::UpdateVsyncStatus()
   }
 }
 
+VsyncSource::VsyncSource()
+  : mDisplaysMonitor("VsyncSource displays monitor")
+{
+}
+
+VsyncSource::~VsyncSource()
+{
+  Shutdown();
+}
+
 int32_t
 VsyncSource::GetDisplayIndex(const nsID& aDisplayID)
 {
@@ -173,6 +178,19 @@ VsyncSource::GetDisplays(nsTArray<nsRefPtr<VsyncDisplay>>& aDisplays)
   for (size_t i = 0; i < mDisplays.Length(); ++i) {
     aDisplays.AppendElement(mDisplays[i]);
   }
+}
+
+void
+VsyncSource::Shutdown()
+{
+  MOZ_ASSERT(NS_IsMainThread());
+  MonitorAutoLock lock(mDisplaysMonitor);
+
+  for (size_t i = 0; i < mDisplays.Length(); ++i) {
+    mDisplays[i]->Shutdown();
+  }
+
+  mDisplays.Clear();
 }
 
 } //namespace gfx

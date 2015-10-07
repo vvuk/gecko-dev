@@ -27,7 +27,7 @@ public:
   bool IsInSoftwareVsyncThread();
   virtual void OnVsync(mozilla::TimeStamp aVsyncTimestamp) override;
   void ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp);
-  void Shutdown();
+  virtual void Shutdown() override;
 
 protected:
   ~SoftwareDisplay();
