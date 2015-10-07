@@ -11,6 +11,7 @@
 #include "gfxPlatform.h"
 #include "gfxDrawable.h"
 #include "imgIEncoder.h"
+#include "mozilla/unused.h"
 #include "mozilla/Base64.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/DataSurfaceHelpers.h"
@@ -1552,6 +1553,7 @@ gfxUtils::GenerateUUID(nsID* aID)
   MOZ_ASSERT(uuidgen, "Couldn't get UUID generator");
 
   nsresult rv = uuidgen->GenerateUUIDInPlace(aID);
+  unused << rv;
   MOZ_ASSERT(NS_SUCCEEDED(rv), "Generating UUID failed");
 }
 

@@ -449,7 +449,7 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
 class OSXDisplay final : public VsyncDisplay
 {
 public:
-  OSXDisplay(const nsID& aID)
+  explicit OSXDisplay(const nsID& aID)
     : VsyncDisplay(aID)
     , mDisplayLink(nullptr)
   {
@@ -562,7 +562,7 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
                               void* aDisplayLinkContext)
 {
   // Executed on OS X hardware vsync thread
-  OSXVsyncSource::OSXDisplay* display = (OSXVsyncSource::OSXDisplay*) aDisplayLinkContext;
+  OSXDisplay* display = (OSXDisplay*) aDisplayLinkContext;
   int64_t nextVsyncTimestamp = aOutputTime->hostTime;
 
   mozilla::TimeStamp nextVsync = mozilla::TimeStamp::FromSystemTime(nextVsyncTimestamp);
