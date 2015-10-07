@@ -299,7 +299,7 @@ class WidgetVsyncRefreshDriverTimer :
     public RefreshDriverTimer
 {
 public:
-  WidgetVsyncRefreshDriverTimer(nsIWidget *aWidget)
+  explicit WidgetVsyncRefreshDriverTimer(nsIWidget *aWidget)
     : mRefreshTickLock("WidgetVsync RefreshTickLock")
     , mProcessedVsync(true)
     , mWidget(aWidget)
@@ -327,7 +327,7 @@ protected:
   // StopTimer were explicitly called before all other refs to it went away.
   class InnerVsyncObserver : public gfx::VsyncObserver {
   public:
-    InnerVsyncObserver(WidgetVsyncRefreshDriverTimer *aTimer)
+    explicit InnerVsyncObserver(WidgetVsyncRefreshDriverTimer *aTimer)
       : mTimer(aTimer)
     {}
     
