@@ -45,7 +45,7 @@
 #include "mozilla/MouseEvents.h"
 #include "GLConsts.h"
 #include "mozilla/unused.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 #include "mozilla/layers/APZCTreeManager.h"
 #include "mozilla/layers/APZEventState.h"
 #include "mozilla/layers/APZThreadUtils.h"
@@ -198,7 +198,7 @@ nsBaseWidget::nsBaseWidget()
   }
 
   mShutdownObserver = new WidgetShutdownObserver(this);
-  mDesiredVsyncDisplayID = gfx::VsyncSource::kGlobalDisplayID;
+  mDesiredVsyncSourceID = gfx::VsyncManager::kGlobalDisplaySourceID;
 }
 
 NS_IMPL_ISUPPORTS(WidgetShutdownObserver, nsIObserver)
@@ -1053,14 +1053,14 @@ class VsyncChildCreateCallback final : public nsIIPCBackgroundChildCreateCallbac
   NS_DECL_ISUPPORTS
 
 public:
-  VsyncChildCreateCallback(const nsID& aDisplayID, VsyncForwardingObserver *aObserver)
-    : mDisplayID(aDisplayID)
+  VsyncChildCreateCallback(const nsID& aSourceID, VsyncForwardingObserver *aObserver)
+    : mSourceID(aSourceID)
     , mObserver(aObserver)
   {
     MOZ_ASSERT(NS_IsMainThread());
   }
 
-  static void CreateVsyncActor(PBackgroundChild* aPBackgroundChild, const nsID& aDisplayID, VsyncForwardingObserver *aObserver);
+  static void CreateVsyncActor(PBackgroundChild* aPBackgroundChild, const nsID& aSourceID, VsyncForwardingObserver *aObserver);
 
 protected:
   virtual ~VsyncChildCreateCallback() {}
@@ -1069,7 +1069,7 @@ protected:
   {
     MOZ_ASSERT(NS_IsMainThread());
     MOZ_ASSERT(aPBackgroundChild);
-    CreateVsyncActor(aPBackgroundChild, mDisplayID, mObserver);
+    CreateVsyncActor(aPBackgroundChild, mSourceID, mObserver);
   }
 
   virtual void ActorFailed() override
@@ -1078,7 +1078,7 @@ protected:
     MOZ_CRASH("Failed To Create VsyncChild Actor");
   }
 
-  nsID mDisplayID;
+  nsID mSourceID;
   nsRefPtr<VsyncForwardingObserver> mObserver;
 }; // VsyncChildCreateCallback
 NS_IMPL_ISUPPORTS(VsyncChildCreateCallback, nsIIPCBackgroundChildCreateCallback)
@@ -1119,8 +1119,8 @@ public:
       return;
     }
 
-    if (mObservedDisplay) {
-      mObservedDisplay->AddVsyncObserver(this);
+    if (mObservedSource) {
+      mObservedSource->AddVsyncObserver(this);
       return;
     }
   }
@@ -1136,22 +1136,22 @@ public:
       mObservedWidget->AddVsyncObserver(this);
   }
 
-  void ObserveDisplay(gfx::VsyncDisplay* aDisplay) {
-    if (mObservedDisplay == aDisplay)
+  void ObserveDisplay(gfx::VsyncSource* aSource) {
+    if (mObservedSource == aSource)
       return;
 
     Unobserve();
 
-    mObservedDisplay = aDisplay;
+    mObservedSource = aSource;
     if (!mPaused)
-      mObservedDisplay->AddVsyncObserver(this);
+      mObservedSource->AddVsyncObserver(this);
   }
 
-  void ObserveDisplayId(const nsID& aVsyncDisplayID) {
-    nsRefPtr<gfx::VsyncDisplay> display;
+  void ObserveDisplayId(const nsID& aVsyncSourceID) {
+    nsRefPtr<gfx::VsyncSource> display;
     if (XRE_IsParentProcess()) {
       // Parent; we can grab the vsync display directly
-      display = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetDisplay(aVsyncDisplayID);
+      display = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetSource(aVsyncSourceID);
       ObserveDisplay(display);
       return;
     }
@@ -1159,7 +1159,7 @@ public:
     // Child
 
     // first check if we already have a VsyncChild for the display id
-    display = sVsyncChildTable->GetWeak(aVsyncDisplayID);
+    display = sVsyncChildTable->GetWeak(aVsyncSourceID);
     if (display) {
       // Yes? Great; observe it and move on.
       ObserveDisplay(display);
@@ -1171,10 +1171,10 @@ public:
     if (backgroundChild) {
       // If we already have PBackground connection, create Vsync actor directly without going
       // through a callback
-      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, aVsyncDisplayID, this);
+      VsyncChildCreateCallback::CreateVsyncActor(backgroundChild, aVsyncSourceID, this);
     } else {
       // Otherwise, set up a callback for when PBackground is created
-      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(aVsyncDisplayID, this);
+      nsRefPtr<nsIIPCBackgroundChildCreateCallback> callback = new VsyncChildCreateCallback(aVsyncSourceID, this);
       if (NS_WARN_IF(!BackgroundChild::GetOrCreateForCurrentThread(callback))) {
         MOZ_CRASH("PVsync actor create failed!");
       }
@@ -1188,16 +1188,16 @@ public:
   }
 
   nsID GetObservedDisplayIdentifier() {
-    if (mObservedDisplay) {
-      return mObservedDisplay->ID();
+    if (mObservedSource) {
+      return mObservedSource->ID();
     }
 
     if (mObservedWidget) {
-      return mObservedWidget->GetVsyncDisplayIdentifier();
+      return mObservedWidget->GetVsyncSourceIdentifier();
     }
 
     NS_WARNING("VsyncForwardingObserver::GetObservedID -- not sure what I'm observing, returning kGlobalDisplay!");
-    return gfx::VsyncSource::kGlobalDisplayID;
+    return gfx::VsyncManager::kGlobalDisplaySourceID;
   }
 
 protected:
@@ -1211,7 +1211,7 @@ protected:
     PauseInternal();
 
     mObservedWidget = nullptr;
-    mObservedDisplay = nullptr;
+    mObservedSource = nullptr;
   }
 
   void PauseInternal() {
@@ -1220,8 +1220,8 @@ protected:
       return;
     }
 
-    if (mObservedDisplay) {
-      mObservedDisplay->RemoveVsyncObserver(this);
+    if (mObservedSource) {
+      mObservedSource->RemoveVsyncObserver(this);
       return;
     }
   }
@@ -1232,12 +1232,12 @@ protected:
   nsBaseWidget *mWidget;
   // XXX can this be a bare pointer?
   nsIWidget* mObservedWidget;
-  nsRefPtr<gfx::VsyncDisplay> mObservedDisplay;
+  nsRefPtr<gfx::VsyncSource> mObservedSource;
 };
 
 /* static */ void
 VsyncChildCreateCallback::CreateVsyncActor(PBackgroundChild* aPBackgroundChild,
-                                           const nsID& aDisplayID,
+                                           const nsID& aSourceID,
                                            VsyncForwardingObserver *aObserver)
 {
   MOZ_ASSERT(NS_IsMainThread());
@@ -1246,38 +1246,38 @@ VsyncChildCreateCallback::CreateVsyncActor(PBackgroundChild* aPBackgroundChild,
   // There is a chance we issued multiple callbacks for the same display ID,
   // especially on startup while PBackground is still being set up.  Check that
   // here, and avoid creating an unnecessary child.
-  nsRefPtr<layout::VsyncChild> child = sVsyncChildTable->GetWeak(aDisplayID);
+  nsRefPtr<layout::VsyncChild> child = sVsyncChildTable->GetWeak(aSourceID);
   if (!child) {
     // no, we need to construct it
-    layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(aDisplayID);
+    layout::PVsyncChild* actor = aPBackgroundChild->SendPVsyncConstructor(aSourceID);
     child = static_cast<layout::VsyncChild*>(actor);
     // add it to the table
-    sVsyncChildTable->Put(aDisplayID, child);
+    sVsyncChildTable->Put(aSourceID, child);
 
-    VSYNC_LOG("[%s]: Vsync actor %p created for display ID %s\n", PARENT_OR_CHILD, child.get(), nsIDToCString(aDisplayID).get());
+    VSYNC_LOG("[%s]: Vsync actor %p created for display ID %s\n", PARENT_OR_CHILD, child.get(), nsIDToCString(aSourceID).get());
   }
 
-  gfx::VsyncDisplay* display = static_cast<gfx::VsyncDisplay*>(child.get());
+  gfx::VsyncSource* display = static_cast<gfx::VsyncSource*>(child.get());
 
   aObserver->ObserveDisplay(display);
 }
 
 // impl for nsIWidget's generic version
 nsID
-nsIWidget::GetVsyncDisplayIdentifier()
+nsIWidget::GetVsyncSourceIdentifier()
 {
-  return gfx::VsyncSource::kGlobalDisplayID;
+  return gfx::VsyncManager::kGlobalDisplaySourceID;
 }
 
 // the actual nsBaseWidget version
 nsID
-nsBaseWidget::GetVsyncDisplayIdentifier()
+nsBaseWidget::GetVsyncSourceIdentifier()
 {
   if (mIncomingVsyncObserver) {
     return mIncomingVsyncObserver->GetObservedDisplayIdentifier();
   }
 
-  return mDesiredVsyncDisplayID;
+  return mDesiredVsyncSourceID;
 }
 
 nsIWidget*
@@ -1308,9 +1308,9 @@ nsBaseWidget::UpdateVsyncObserver()
     return;
   }
 
-  mIncomingVsyncObserver->ObserveDisplayId(mDesiredVsyncDisplayID);
+  mIncomingVsyncObserver->ObserveDisplayId(mDesiredVsyncSourceID);
 
-  VSYNC_LOG("[%s]: Widget %p observing vsync ID %s\n", PARENT_OR_CHILD, this, nsIDToCString(mDesiredVsyncDisplayID).get());
+  VSYNC_LOG("[%s]: Widget %p observing vsync ID %s\n", PARENT_OR_CHILD, this, nsIDToCString(mDesiredVsyncSourceID).get());
 }
 
 bool
@@ -2189,9 +2189,9 @@ nsBaseWidget::SetAttachedHMD(mozilla::gfx::VRHMDInfo* aHMD)
   mHMD = aHMD;
 
   if (aHMD) {
-    mIncomingVsyncObserver->ObserveDisplayId(aHMD->GetDisplayID());
+    mIncomingVsyncObserver->ObserveDisplayId(aHMD->GetVsyncSourceID());
   } else {
-    mIncomingVsyncObserver->ObserveDisplayId(mDesiredVsyncDisplayID);
+    mIncomingVsyncObserver->ObserveDisplayId(mDesiredVsyncSourceID);
   }
 }
 

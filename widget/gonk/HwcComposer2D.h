@@ -41,7 +41,7 @@ namespace gl {
 }
 
 namespace gfx {
-class VsyncDisplay;
+class VsyncSource;
 }
 
 namespace layers {
@@ -117,7 +117,7 @@ private:
     bool                    mHasHWVsync;
     layers::CompositorParent* mCompositorParent;
     Mutex mLock;
-    nsRefPtr<gfx::VsyncDisplay> mVsyncDisplay;
+    nsRefPtr<gfx::VsyncSource> mVsyncSource;
 };
 
 } // namespace mozilla

@@ -36,7 +36,7 @@
 #include "cutils/properties.h"
 #include "gfx2DGlue.h"
 #include "gfxPlatform.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 #include "nsScreenManagerGonk.h"
 #include "nsWindow.h"
 
@@ -122,7 +122,7 @@ HwcComposer2D::HwcComposer2D()
     mColorFill = mHal->Query(HwcHALBase::QueryType::COLOR_FILL);
     mRBSwapSupport = mHal->Query(HwcHALBase::QueryType::RB_SWAP);
 
-    mVsyncDisplay = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay();
+    mVsyncSource = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplaySource();
 }
 
 HwcComposer2D::~HwcComposer2D() {
@@ -184,7 +184,7 @@ HwcComposer2D::Vsync(int aDisplay, nsecs_t aVsyncTimestamp)
     // with JellyBean.
 #if (ANDROID_VERSION == 19 || ANDROID_VERSION >= 21)
     TimeStamp vsyncTime = mozilla::TimeStamp::FromSystemTime(aVsyncTimestamp);
-    mVsyncDisplay->OnVsync(vsyncTime);
+    mVsyncSource->OnVsync(vsyncTime);
 #else
     // If this device doesn't support vsync, this function should not be used.
     MOZ_ASSERT(false);

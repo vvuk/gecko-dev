@@ -19,7 +19,7 @@
 #include "gfxVROculus050.h"
 #endif
 #include "gfxVRCardboard.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 #include "nsServiceManagerUtils.h"
 #include "nsIScreenManager.h"
@@ -93,7 +93,7 @@ VRHMDInfo::VRHMDInfo(VRHMDType aType)
 
   mDeviceIndex = VRHMDManager::AllocateDeviceIndex();
   mDeviceName.AssignLiteral("Unknown Device");
-  mDisplayID = VsyncSource::kGlobalDisplayID;
+  mVsyncSourceID = VsyncManager::kGlobalDisplaySourceID;
 }
 
 

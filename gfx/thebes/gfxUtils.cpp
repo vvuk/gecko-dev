@@ -1666,6 +1666,7 @@ gfxUtils::ThreadSafeGetFeatureStatus(const nsCOMPtr<nsIGfxInfo>& gfxInfo,
   }
 
   return gfxInfo->GetFeatureStatus(feature, status);
+}
 
 /* static */ void
 gfxUtils::GenerateUUID(nsID* aID)

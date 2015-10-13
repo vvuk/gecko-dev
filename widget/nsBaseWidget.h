@@ -63,7 +63,7 @@ class Thread;
 #define TOUCH_INJECT_MAX_POINTS 256
 
 class VsyncForwardingObserver;
-class WidgetVsyncDisplay;
+class WidgetVsyncSource;
 class nsBaseWidget;
 
 // Helper class used in shutting down gfx related code.
@@ -279,11 +279,11 @@ public:
    */
   bool AddVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) override;
   bool RemoveVsyncObserver(mozilla::gfx::VsyncObserver *aObserver) override;
-  nsID GetVsyncDisplayIdentifier() override;
+  nsID GetVsyncSourceIdentifier() override;
 
 protected:
   friend class VsyncForwardingObserver;
-  friend class WidgetVsyncDisplay;
+  friend class WidgetVsyncSource;
 
   nsIWidget *GetVsyncRootWidget();
   void UpdateVsyncObserver();
@@ -294,7 +294,7 @@ protected:
   nsRefPtr<VsyncForwardingObserver> mIncomingVsyncObserver;
   nsTArray<nsRefPtr<mozilla::gfx::VsyncObserver>> mVsyncObservers;
   mozilla::Mutex mVsyncObserversLock;
-  nsID mDesiredVsyncDisplayID;
+  nsID mDesiredVsyncSourceID;
 
 public:
   // Should be called by derived implementations to notify on system color and

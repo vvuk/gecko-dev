@@ -24,7 +24,7 @@
 #include "nsScreenManagerGonk.h"
 #include "nsThreadUtils.h"
 #include "HwcComposer2D.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 #include "nsWindow.h"
 #include "mozilla/layers/CompositorParent.h"
 #include "mozilla/Services.h"
@@ -676,7 +676,7 @@ nsScreenManagerGonk::VsyncControl(bool aEnabled)
     }
 
     MOZ_ASSERT(NS_IsMainThread());
-    nsRefPtr<VsyncDisplay> display = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplay();
+    nsRefPtr<VsyncSource> display = gfxPlatform::GetPlatform()->GetHardwareVsync()->GetGlobalDisplaySource();
     if (aEnabled) {
         display->EnableVsync();
     } else {

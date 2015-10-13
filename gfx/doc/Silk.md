@@ -12,8 +12,8 @@ The flow of our rendering engine is as follows:
 
 1. Hardware Vsync event occurs on an OS specific *Hardware Vsync Thread* on a per display/output-device basis.
 2. The *Hardware Vsync Thread* attached to the display notifies any observers listening to it, which are generally going to be Widgets or VsyncParents (for cross-process vsync).
-3. Each Widget can listen to either another widget (generally a toplevel widget) for vsync notifications, or directly to a **VsyncDisplay**.
-4. A **VsyncDisplay** may either be a direct display getting notifications from the *Hardware Vsync Thread*, or it may be a **VsyncChild** (via the PVSync protocol) that is listening to cross-process Vsync notifications from the main/compositor thread.
+3. Each Widget can listen to either another widget (generally a toplevel widget) for vsync notifications, or directly to a **VsyncSource**.
+4. A **VsyncSource** may either be a direct display getting notifications from the *Hardware Vsync Thread*, or it may be a **VsyncChild** (via the PVSync protocol) that is listening to cross-process Vsync notifications from the main/compositor thread.
 5. The Widget, in turn, will notify any of the things that are listening to *it* -- these are currently RefreshDrivers, Compositors, or other Widgets.
 6. When it receives a vsync event, the **Compositor** dispatches input events on the *Compositor Thread*, then composites. Input events are only dispatched on the *Compositor Thread* on b2g.
 7. When it receives a vsync event, The **RefreshDriver** paints on the *Main Thread*.
@@ -23,27 +23,27 @@ The flow of our rendering engine is as follows:
 <img src="silkArchitecture.png" width="900px" height="630px" />
 
 #Hardware Vsync
-Hardware vsync events from (1), occur on a specific **VsyncDisplay** Object.
-Each **VsyncDisplay** object has an associated UUID.  These UUIDs are generated during each runtime, with the exception of a single well-known "global display" ID.
-The **VsyncDisplay** object is responsible for enabling / disabling vsync on a per connected display basis.
-For example, if two monitors are connected, two **VsyncDisplay** should be created, each listening to vsync events for their respective displays. (NOTE: currently, no multi-monitor support exists on any platform, though all the functionality is in place for this to work properly.)
+Hardware vsync events from (1), occur on a specific **VsyncSource** Object.
+Each **VsyncSource** object has an associated UUID.  These UUIDs are generated during each runtime, with the exception of a single well-known "global display" ID.
+The **VsyncSource** object is responsible for enabling / disabling vsync on a per connected display basis.
+For example, if two monitors are connected, two **VsyncSource** should be created, each listening to vsync events for their respective displays. (NOTE: currently, no multi-monitor support exists on any platform, though all the functionality is in place for this to work properly.)
 The "global display" ID is the default display that each widget should listen to, unless it knows about a better display.
-Each platform will have to implement a specific **VsyncDisplay** object to hook and listen to vsync events.
+Each platform will have to implement a specific **VsyncSource** object to hook and listen to vsync events.
 
 OS X creates one *Hardware Vsync Thread* and uses DisplayLink to listen to vsync events.  We do not currently support multiple displays, so we use one global **CVDisplayLinkRef** that works across all active displays.
 
 On Windows, we have to create a new platform *thread* that waits for DwmFlush(), which works across all active displays.
 Once the thread wakes up from DwmFlush(), the actual vsync timestamp is retrieved from DwmGetCompositionTimingInfo(), which is the timestamp that is actually passed into the compositor and refresh driver.
 
-On Firefox OS, the **VsyncDisplay** is implemented using **HwcComposer2D**.
+On Firefox OS, the **VsyncSource** is implemented using **HwcComposer2D**.
 
-When a vsync occurs on a **VsyncDisplay**, the *Hardware Vsync Thread* callback notifies all of its observers (generally Widgets) with the vsync's timestamp.
+When a vsync occurs on a **VsyncSource**, the *Hardware Vsync Thread* callback notifies all of its observers (generally Widgets) with the vsync's timestamp.
 
 The Widgets then notify all of their own observers, generally other Widgets, RefreshDrivers, or Compositors.
 
-A **VsyncSource** object manages **VsyncDisplays**, keeping a list of nsIDs to associated **VsyncDisplays**.  **VsyncDisplays** may be added or removed to the **VsyncSource** as they are added/removed from the system.
+A **VsyncManager** object manages **VsyncSources**, keeping a list of nsIDs to associated **VsyncSources**.  **VsyncSources** may be added or removed to the **VsyncManager** as they are added/removed from the system.
 
-The **VsyncSource** object is accessible from **gfxPlatform**, and is instantiated only on the parent process when **gfxPlatform** is created.  The **VsyncSource** is destroyed when **gfxPlatform** is destroyed.  There is only one **VsyncSource** object throughout the entire lifetime of Firefox.
+The **VsyncManager** object is accessible from **gfxPlatform**, and is instantiated only on the parent process when **gfxPlatform** is created.  The **VsyncManager** is destroyed when **gfxPlatform** is destroyed.  There is only one **VsyncManager** object throughout the entire lifetime of Firefox.
 
 # Compositor
 The **Compositor** is notified of a vsync event through a **CompositorVsyncObserver**.  The **CompositorVsyncObserver** posts a task to the *Compositor Thread* to tell the **Compositor** to do its work, to ensure that the work does not happen on the *Vsync Thread*.
@@ -55,9 +55,9 @@ The **CompositorParent**, **CompositorVsyncObserver**, and **nsBaseWidget** all 
 ### Multiple Displays
 
 NOTE: Not implemented yet.
-When multiple displays are present on a system, multiple **VsyncDisplay**s should exist, one for each display.
+When multiple displays are present on a system, multiple **VsyncSource**s should exist, one for each display.
 The choice of which display to listen to should be made on a per-toplevel-widget basis.  Generally, the Widget should listen to vsync events from the display that contains the biggest portion of the Widget's area.
-When a toplevel widget moves, all that needs to happen is it needs to change the **VsyncDisplay** that it's listening to.  All the associated **RefreshDrivers**, **Compositors**, etc. that are being shown within that **Widget** do not need to be aware of the change.
+When a toplevel widget moves, all that needs to happen is it needs to change the **VsyncSource** that it's listening to.  All the associated **RefreshDrivers**, **Compositors**, etc. that are being shown within that **Widget** do not need to be aware of the change.
 
 ### GeckoTouchDispatcher
 The **GeckoTouchDispatcher** is a singleton that resamples touch events to smooth out jank while tracking a user's finger.
@@ -130,8 +130,8 @@ This sends messages from the Parent::*PBackground Thread* to the Child::*Main Th
 The *main thread* receiving IPC messages on the content process is acceptable because **RefreshDrivers** must execute on the *main thread*.
 However, there is some amount of time required to setup the IPC connection upon process creation.  This is done the first time a particular display is requested in nsBaseWidget.
 
-The **VsyncParent** listens to vsync events through the **VsyncDisplay** on the parent side and sends vsync IPC messages to the **VsyncChild**.
-The **VsyncChild** is itself a **VsyncDisplay**, and notifies its observers when it receives a notifiation from the remote process.
+The **VsyncParent** listens to vsync events through the **VsyncSource** on the parent side and sends vsync IPC messages to the **VsyncChild**.
+The **VsyncChild** is itself a **VsyncSource**, and notifies its observers when it receives a notifiation from the remote process.
 
 During the shutdown process of the content process, ActorDestroy is called on the **VsyncChild** and **VsyncParent** due to the normal PBackground shutdown process.
 Once ActorDestroy is called, no IPC messages should be sent across the channel.
@@ -140,8 +140,8 @@ The **VsyncParent**, due to being a **VsyncObserver**, is ref counted.
 
 Thus the overall flow during normal execution is:
 
-1. [parent] VsyncDisplay receives a hardware vsync notification from the underlying OS.
-2. [parent] VsyncDisplay notifies its observers: Widgets and VsyncParents
+1. [parent] VsyncSource receives a hardware vsync notification from the underlying OS.
+2. [parent] VsyncSource notifies its observers: Widgets and VsyncParents
 3. [parent] VsyncParent psots a task to the PBackground thread to send a vsync IPC message to its VsyncChild
 4. [child] VsyncChild receives a notification that vsync has occurred (on the main thread)
 5. [child] VsyncChild notifies all of its observers (in this case, generally exclusively Widgets)
@@ -166,7 +166,7 @@ We have **N RefreshTimers**, where N is the number of connected displays.
 Each **RefreshTimer** still has multiple **RefreshDrivers**.
 
 When a tab or window changes monitors, the **nsIWidget** receives a display changed notification.
-Based on which display the window is on, the window switches to the correct **VsyncDisplay**.
+Based on which display the window is on, the window switches to the correct **VsyncSource**.
 Each **TabParent** should also send a notification to their child.
 Each **TabChild**, given the display ID, switches to the correct **RefreshTimer** associated with the display ID.
 When each display vsync occurs, it sends one IPC message to notify vsync.
@@ -176,7 +176,7 @@ There is still only one **VsyncParent/VsyncChild** pair, just each vsync notific
 # Object Lifetime
 
 * CompositorVsyncObserver - Lives and dies the same time as the CompositorParent.
-* VsyncSource - Lives as long as the gfxPlatform on the chrome process, which is the lifetime of Firefox.
+* VsyncManager - Lives as long as the gfxPlatform on the chrome process, which is the lifetime of Firefox.
 * VsyncParent/VsyncChild - Lives as long as the content process
 * RefreshTimer - Lives as long as the process
 

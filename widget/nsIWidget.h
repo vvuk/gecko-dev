@@ -525,7 +525,7 @@ class nsIWidget : public nsISupports {
     /**
      * Return the nsID for the display that this widget is observing vsync from.
      */
-    virtual nsID GetVsyncDisplayIdentifier();
+    virtual nsID GetVsyncSourceIdentifier();
 
     /**
      * Return the default scale factor for the window. This is the

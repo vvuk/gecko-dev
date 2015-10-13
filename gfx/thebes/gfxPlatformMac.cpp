@@ -26,7 +26,7 @@
 
 #include "nsCocoaFeatures.h"
 #include "mozilla/layers/CompositorParent.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 using namespace mozilla;
 using namespace mozilla::gfx;
@@ -457,18 +457,18 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
                               CVOptionFlags* aFlagsOut,
                               void* aDisplayLinkContext);
 
-class OSXDisplay final : public VsyncDisplay
+class OSXVsyncSource final : public VsyncSource
 {
 public:
-  explicit OSXDisplay(const nsID& aID)
-    : VsyncDisplay(aID)
+  explicit OSXVsyncSource(const nsID& aID)
+    : VsyncSource(aID)
     , mDisplayLink(nullptr)
   {
     MOZ_ASSERT(NS_IsMainThread());
     mTimer = do_CreateInstance(NS_TIMER_CONTRACTID);
   }
 
-  ~OSXDisplay()
+  ~OSXVsyncSource()
   {
     MOZ_ASSERT(NS_IsMainThread());
     mTimer->Cancel();
@@ -479,7 +479,7 @@ public:
   static void RetryEnableVsync(nsITimer* aTimer, void* aOsxDisplay)
   {
     MOZ_ASSERT(NS_IsMainThread());
-    OSXDisplay* osxDisplay = static_cast<OSXDisplay*>(aOsxDisplay);
+    OSXVsyncSource* osxDisplay = static_cast<OSXVsyncSource*>(aOsxDisplay);
     MOZ_ASSERT(osxDisplay);
     osxDisplay->EnableVsync();
   }
@@ -563,7 +563,7 @@ private:
   // Manages the display link render thread
   CVDisplayLinkRef   mDisplayLink;
   nsRefPtr<nsITimer> mTimer;
-}; // OSXDisplay
+}; // OSXVsyncSource
 
 static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
                               const CVTimeStamp* aNow,
@@ -573,7 +573,7 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
                               void* aDisplayLinkContext)
 {
   // Executed on OS X hardware vsync thread
-  OSXDisplay* display = (OSXDisplay*) aDisplayLinkContext;
+  OSXVsyncSource* display = (OSXVsyncSource*) aDisplayLinkContext;
   int64_t nextVsyncTimestamp = aOutputTime->hostTime;
 
   mozilla::TimeStamp nextVsync = mozilla::TimeStamp::FromSystemTime(nextVsyncTimestamp);
@@ -589,7 +589,7 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
     // Bug 1158321 - The VsyncCallback can sometimes execute before the reported
     // vsync time. In those cases, normalize the timestamp to Now() as sending
     // timestamps in the future has undefined behavior. See the comment above
-    // OSXDisplay::mPreviousTimestamp
+    // OSXVsyncSource::mPreviousTimestamp
     previousVsync = now;
   }
 
@@ -599,19 +599,19 @@ static CVReturn VsyncCallback(CVDisplayLinkRef aDisplayLink,
   return kCVReturnSuccess;
 }
 
-already_AddRefed<mozilla::gfx::VsyncSource>
-gfxPlatformMac::CreateHardwareVsyncSource()
+already_AddRefed<mozilla::gfx::VsyncManager>
+gfxPlatformMac::CreateHardwareVsyncManager()
 {
-  nsRefPtr<OSXDisplay> primaryDisplay = new OSXDisplay(VsyncSource::kGlobalDisplayID);
+  nsRefPtr<OSXVsyncSource> primaryDisplay = new OSXVsyncSource(VsyncManager::kGlobalDisplaySourceID);
   primaryDisplay->EnableVsync();
   if (!primaryDisplay->IsVsyncEnabled()) {
     NS_WARNING("OS X Vsync source not enabled. Falling back to software vsync.");
-    return gfxPlatform::CreateSoftwareVsyncSource();
+    return gfxPlatform::CreateSoftwareVsyncManager();
   }
 
-  nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
-  vsyncSource->RegisterDisplay(primaryDisplay);
-  return vsyncSource.forget();
+  nsRefPtr<VsyncManager> vsyncManager = new VsyncManager();
+  vsyncManager->RegisterSource(primaryDisplay);
+  return vsyncManager.forget();
 }
 
 void

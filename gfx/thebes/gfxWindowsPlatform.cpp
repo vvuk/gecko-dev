@@ -76,7 +76,7 @@
 #include "gfxPrefs.h"
 #include "gfxUtils.h"
 
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 #include "DriverCrashGuard.h"
 #include "mozilla/dom/ContentParent.h"
 
@@ -2594,11 +2594,11 @@ DwmCompositionEnabled()
   return dwmEnabled;
 }
 
-class DWMVsyncDisplay final : public VsyncDisplay
+class DWMVsyncSource final : public VsyncSource
 {
   public:
-    DWMVsyncDisplay(const nsID& aDisplayID)
-      : VsyncDisplay(aDisplayID)
+    DWMVsyncSource(const nsID& aSourceID)
+      : VsyncSource(aSourceID)
       , mVsyncEnabledLock("D3DVsyncEnabledLock")
       , mPrevVsync(TimeStamp::Now())
       , mVsyncEnabled(false)
@@ -2622,7 +2622,7 @@ class DWMVsyncDisplay final : public VsyncDisplay
       }
 
       CancelableTask* vsyncStart = NewRunnableMethod(this,
-          &DWMVsyncDisplay::VBlankLoop);
+          &DWMVsyncSource::VBlankLoop);
       mVsyncThread->message_loop()->PostTask(FROM_HERE, vsyncStart);
     }
 
@@ -2656,7 +2656,7 @@ class DWMVsyncDisplay final : public VsyncDisplay
       }
 
       mVsyncThread->message_loop()->PostDelayedTask(FROM_HERE,
-          NewRunnableMethod(this, &DWMVsyncDisplay::VBlankLoop),
+          NewRunnableMethod(this, &DWMVsyncSource::VBlankLoop),
           delay.ToMilliseconds());
     }
 
@@ -2729,7 +2729,7 @@ class DWMVsyncDisplay final : public VsyncDisplay
         // Large parts of gecko assume that the refresh driver timestamp
         // must be <= Now() and cannot be in the future.
         MOZ_ASSERT(vsync <= TimeStamp::Now());
-        VsyncDisplay::OnVsync(vsync);
+        VsyncSource::OnVsync(vsync);
 
         // DwmComposition can be dynamically enabled/disabled
         // so we have to check every time that it's available.
@@ -2752,7 +2752,7 @@ class DWMVsyncDisplay final : public VsyncDisplay
     }
     
   private:
-    virtual ~DWMVsyncDisplay()
+    virtual ~DWMVsyncSource()
     {
       MOZ_ASSERT(NS_IsMainThread());
       DisableVsync();
@@ -2770,36 +2770,30 @@ class DWMVsyncDisplay final : public VsyncDisplay
     Monitor mVsyncEnabledLock;
     base::Thread* mVsyncThread;
     bool mVsyncEnabled;
-}; // DWMVsyncDisplay
+}; // DWMVsyncSource
 
-already_AddRefed<mozilla::gfx::VsyncSource>
-gfxWindowsPlatform::CreateHardwareVsyncSource()
+already_AddRefed<mozilla::gfx::VsyncManager>
+gfxWindowsPlatform::CreateHardwareVsyncManager()
 {
   MOZ_RELEASE_ASSERT(NS_IsMainThread());
   if (!WinUtils::dwmIsCompositionEnabledPtr) {
     NS_WARNING("Dwm composition not available, falling back to software vsync");
-    return gfxPlatform::CreateSoftwareVsyncSource();
+    return gfxPlatform::CreateSoftwareVsyncManager();
   }
 
   BOOL dwmEnabled = false;
   WinUtils::dwmIsCompositionEnabledPtr(&dwmEnabled);
   if (!dwmEnabled) {
     NS_WARNING("DWM not enabled, falling back to software vsync");
-    return gfxPlatform::CreateSoftwareVsyncSource();
+    return gfxPlatform::CreateSoftwareVsyncManager();
   }
 
-  nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
+  nsRefPtr<VsyncManager> vsyncManager = new VsyncManager();
   
-  nsRefPtr<DWMVsyncDisplay> globalDisplay = new DWMVsyncDisplay(VsyncSource::kGlobalDisplayID);
-  vsyncSource->RegisterDisplay(globalDisplay);
+  nsRefPtr<DWMVsyncSource> globalDisplay = new DWMVsyncSource(VsyncManager::kGlobalDisplaySourceID);
+  vsyncManager->RegisterSource(globalDisplay);
 
-#if 0
-  // register an extra one for testing
-  nsRefPtr<DWMVsyncDisplay> oneDisplay = new DWMVsyncDisplay(gfxUtils::GenerateUUID());
-  vsyncSource->RegisterDisplay(oneDisplay);
-#endif
-
-  return vsyncSource.forget();
+  return vsyncManager.forget();
 }
 
 bool

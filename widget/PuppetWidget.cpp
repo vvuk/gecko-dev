@@ -1352,18 +1352,18 @@ PuppetWidget::GetCurrentWidgetListener()
 }
 
 void
-PuppetWidget::SetVsyncDisplayID(const nsID& aID)
+PuppetWidget::SetVsyncSourceID(const nsID& aID)
 {
 #if 1
   char idstr[NSID_LENGTH];
   aID.ToProvidedString(idstr);
-  VSYNC_LOG("PuppetWidget[%p]::SetVsyncDisplayID %s", this, idstr);
+  VSYNC_LOG("PuppetWidget[%p]::SetVsyncSourceID %s", this, idstr);
 #endif
 
-  if (aID == mDesiredVsyncDisplayID)
+  if (aID == mDesiredVsyncSourceID)
     return;
 
-  mDesiredVsyncDisplayID = aID;
+  mDesiredVsyncSourceID = aID;
   UpdateVsyncObserver();
 }
 

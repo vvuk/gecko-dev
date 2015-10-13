@@ -21,7 +21,7 @@
 
 namespace mozilla {
 namespace gfx {
-class VsyncDisplay;
+class VsyncSource;
 
 namespace impl {
 
@@ -75,7 +75,7 @@ protected:
   ovrTrackingState mLastTrackingState;
   int32_t mPerfHudMode;
 
-  nsRefPtr<VsyncDisplay> mVsyncDisplay;
+  nsRefPtr<VsyncSource> mVsyncSource;
 };
 
 } // namespace impl

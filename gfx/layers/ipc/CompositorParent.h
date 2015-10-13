@@ -35,7 +35,7 @@
 #include "nsAutoPtr.h"                  // for nsRefPtr
 #include "nsISupportsImpl.h"
 #include "ThreadSafeRefcountingWithMainThreadDestruction.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 class CancelableTask;
 class MessageLoop;

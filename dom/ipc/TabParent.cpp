@@ -1117,9 +1117,9 @@ TabParent::Show(const ScreenIntSize& size, bool aParentIsActive)
     }
 
     nsCOMPtr<nsIWidget> widget = GetWidget();
-    nsID vsyncDisplay = gfx::VsyncSource::kGlobalDisplayID;
+    nsID vsyncDisplay = gfx::VsyncManager::kGlobalDisplaySourceID;
     if (widget) {
-      vsyncDisplay = widget->GetVsyncDisplayIdentifier();
+      vsyncDisplay = widget->GetVsyncSourceIdentifier();
     }
 
     TryCacheDPIAndScale();

@@ -10,8 +10,7 @@
 #include "MainThreadUtils.h"
 #include "nsIThread.h"
 #include "mozilla/nsRefPtr.h"
-#include "SoftwareVsyncSource.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 #include "mozilla/Monitor.h"
 #include "mozilla/TimeStamp.h"
 
@@ -77,22 +76,22 @@ protected:
   {
     gfxPlatform::GetPlatform();
     gfxPrefs::GetSingleton();
-    mVsyncSource = gfxPlatform::GetPlatform()->GetHardwareVsync();
-    MOZ_RELEASE_ASSERT(mVsyncSource);
+    mVsyncManager = gfxPlatform::GetPlatform()->GetHardwareVsync();
+    MOZ_RELEASE_ASSERT(mVsyncManager);
   }
 
   virtual ~VsyncTester()
   {
-    mVsyncSource = nullptr;
+    mVsyncManager = nullptr;
   }
 
-  nsRefPtr<VsyncSource> mVsyncSource;
+  nsRefPtr<VsyncManager> mVsyncManager;
 };
 
 // Tests that we can enable/disable vsync notifications
 TEST_F(VsyncTester, EnableVsync)
 {
-  nsRefPtr<VsyncDisplay> globalDisplay = mVsyncSource->GetGlobalDisplay();
+  nsRefPtr<VsyncSource> globalDisplay = mVsyncManager->GetGlobalDisplaySource();
   globalDisplay->DisableVsync();
   ASSERT_FALSE(globalDisplay->IsVsyncEnabled());
 
@@ -107,7 +106,7 @@ TEST_F(VsyncTester, EnableVsync)
 // Test that if we have vsync enabled, the parent refresh driver should get notifications
 TEST_F(VsyncTester, ParentRefreshDriverGetVsyncNotifications)
 {
-  nsRefPtr<VsyncDisplay> globalDisplay = mVsyncSource->GetGlobalDisplay();
+  nsRefPtr<VsyncSource> globalDisplay = mVsyncManager->GetGlobalDisplaySource();
   globalDisplay->DisableVsync();
   ASSERT_FALSE(globalDisplay->IsVsyncEnabled());
 
@@ -133,7 +132,7 @@ TEST_F(VsyncTester, ParentRefreshDriverGetVsyncNotifications)
 // Test that child refresh vsync observers get vsync notifications
 TEST_F(VsyncTester, ChildRefreshDriverGetVsyncNotifications)
 {
-  nsRefPtr<VsyncDisplay> globalDisplay = mVsyncSource->GetGlobalDisplay();
+  nsRefPtr<VsyncSource> globalDisplay = mVsyncManager->GetGlobalDisplaySource();
   globalDisplay->DisableVsync();
   ASSERT_FALSE(globalDisplay->IsVsyncEnabled());
 

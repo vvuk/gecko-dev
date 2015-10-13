@@ -12,7 +12,7 @@
 #include "gfxPrefs.h"
 #include "gfxUtils.h"
 #include "nsString.h"
-#include "SoftwareVsyncSource.h"
+#include "gfxVsync.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/gfx/Quaternion.h"
 #include "nsServiceManagerUtils.h"
@@ -283,9 +283,9 @@ HMDInfoOculus::HMDInfoOculus(ovrHmd aHMD)
   SetFOV(mRecommendedEyeFOV[Eye_Left], mRecommendedEyeFOV[Eye_Right], 0.01, 10000.0);
 
   // create a vsync source for this display and register it
-  gfxUtils::GenerateUUID(&mDisplayID);
-  mVsyncDisplay = new SoftwareDisplay(mDisplayID, 1000.0 / mDesc.DisplayRefreshRate);
-  gfxPlatform::GetPlatform()->GetHardwareVsync()->RegisterDisplay(mVsyncDisplay);
+  gfxUtils::GenerateUUID(&mVsyncSourceID);
+  mVsyncSource = new SoftwareVsyncSource(mVsyncSourceID, 1000.0 / mDesc.DisplayRefreshRate);
+  gfxPlatform::GetPlatform()->GetHardwareVsync()->RegisterSource(mVsyncSource);
 
 #if 1
   int32_t xcoord = 0;
@@ -308,10 +308,10 @@ HMDInfoOculus::HMDInfoOculus(ovrHmd aHMD)
 void
 HMDInfoOculus::Destroy()
 {
-  if (mVsyncDisplay) {
-    gfxPlatform::GetPlatform()->GetHardwareVsync()->UnregisterDisplay(mDisplayID);
-    mVsyncDisplay->Shutdown();
-    mVsyncDisplay = nullptr;
+  if (mVsyncSource) {
+    gfxPlatform::GetPlatform()->GetHardwareVsync()->UnregisterSource(mVsyncSourceID);
+    mVsyncSource->Shutdown();
+    mVsyncSource = nullptr;
   }
 
   if (mHMD) {

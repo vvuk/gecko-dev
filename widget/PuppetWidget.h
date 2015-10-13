@@ -254,7 +254,7 @@ public:
 
   virtual void StartAsyncScrollbarDrag(const AsyncDragMetrics& aDragMetrics) override;
 
-  void SetVsyncDisplayID(const nsID& aID);
+  void SetVsyncSourceID(const nsID& aID);
 
 protected:
   bool mEnabled;

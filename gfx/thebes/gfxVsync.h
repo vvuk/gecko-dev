@@ -3,8 +3,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef GFX_VSYNCSOURCE_H
-#define GFX_VSYNCSOURCE_H
+#ifndef GFX_VSYNC_H
+#define GFX_VSYNC_H
 
 #include "nsTArray.h"
 #include "mozilla/nsRefPtr.h"
@@ -13,10 +13,15 @@
 #include "nsISupportsImpl.h"
 #include "nsID.h"
 
+class CancelableTask;
+namespace base {
+class Thread;
+}
+
 namespace mozilla {
 namespace gfx {
 
-class VsyncDisplay;
+class VsyncSource;
 
 // An observer class, with a single notify method that is called when
 // vsync occurs.
@@ -27,7 +32,7 @@ class VsyncObserver
 public:
   // The method called when a vsync occurs. Return true if some work was done.
   // In general, this vsync notification will occur on the hardware vsync
-  // thread from VsyncSource. But it might also be called on PVsync ipc thread
+  // thread from VsyncManager. But it might also be called on PVsync ipc thread
   // if this notification is cross process. Thus all observer should check the
   // thread model before handling the real task.
   virtual bool NotifyVsync(TimeStamp aVsyncTimestamp) = 0;
@@ -39,43 +44,43 @@ protected:
 
 // Controls how and when to enable/disable vsync. Lives as long as the
 // gfxPlatform does on the parent process
-class VsyncSource
+class VsyncManager
 {
-  friend class VsyncDisplay;
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncSource)
+  friend class VsyncSource;
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncManager)
 
 public:
-  // the GUID the global display must use
-  static const nsID kGlobalDisplayID;
+  // the GUID the global display source must use
+  static const nsID kGlobalDisplaySourceID;
 
-  VsyncSource();
+  VsyncManager();
 
-  virtual void RegisterDisplay(VsyncDisplay* aDisplay);
-  virtual void UnregisterDisplay(const nsID& aDisplayID);
-  virtual already_AddRefed<VsyncDisplay> GetDisplay(const nsID& aDisplayID);
-  virtual void GetDisplays(nsTArray<nsRefPtr<VsyncDisplay>>& aDisplays);
+  virtual void RegisterSource(VsyncSource* aSource);
+  virtual void UnregisterSource(const nsID& aSourceID);
+  virtual already_AddRefed<VsyncSource> GetSource(const nsID& aSourceID);
+  virtual void GetSources(nsTArray<nsRefPtr<VsyncSource>>& aSources);
 
-  already_AddRefed<VsyncDisplay> GetGlobalDisplay() {
-    return GetDisplay(kGlobalDisplayID);
+  already_AddRefed<VsyncSource> GetGlobalDisplaySource() {
+    return GetSource(kGlobalDisplaySourceID);
   }
 
   virtual void Shutdown();
 
 protected:
-  virtual ~VsyncSource();
+  virtual ~VsyncManager();
 
-  // return index of aDisplayID in mDisplays, or -1 if not found.
-  // Assumes mDisplaysMonitor is locked.
-  int32_t GetDisplayIndex(const nsID& aDisplayID);
+  // return index of aSourceID in mSources, or -1 if not found.
+  // Assumes mSourcesMonitor is locked.
+  int32_t GetSourceIndex(const nsID& aSourceID);
 
-  Monitor mDisplaysMonitor;
-  nsTArray<nsRefPtr<VsyncDisplay>> mDisplays;
+  Monitor mSourcesMonitor;
+  nsTArray<nsRefPtr<VsyncSource>> mSources;
 };
 
 // Controls vsync unique to each display and unique on each platform
-class VsyncDisplay {
+class VsyncSource {
   friend class VysncSource;
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncDisplay)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(VsyncSource)
 
 public:
  // return a UUID that can be used to identify this display (during
@@ -111,8 +116,8 @@ public:
 
 protected:
   // constructs a new Display using the given identifier
-  VsyncDisplay(const nsID& aID);
-  virtual ~VsyncDisplay();
+  VsyncSource(const nsID& aID);
+  virtual ~VsyncSource();
 
   nsID mID;
 
@@ -123,7 +128,36 @@ private:
   nsTArray<nsRefPtr<VsyncObserver>> mVsyncObservers;
 };
 
+/**
+ * A pure software-timer driven vsync generator
+ */
+class SoftwareVsyncSource final : public VsyncSource
+{
+public:
+  explicit SoftwareVsyncSource(const nsID& aSourceID,
+                           double aInterval = 1000.0 / 60.0);
+  virtual void EnableVsync() override;
+  virtual void DisableVsync() override;
+  virtual bool IsVsyncEnabled() override;
+  bool IsInSoftwareVsyncThread();
+  virtual void OnVsync(mozilla::TimeStamp aVsyncTimestamp) override;
+  void ScheduleNextVsync(mozilla::TimeStamp aVsyncTimestamp);
+  virtual void Shutdown() override;
+
+protected:
+  ~SoftwareVsyncSource();
+
+  void InternalEnableVsync();
+  void InternalDisableVsync();
+
+  mozilla::TimeDuration mVsyncRate;
+  // Use a chromium thread because nsITimers* fire on the main thread
+  base::Thread* mVsyncThread;
+  CancelableTask* mCurrentVsyncTask; // only access on vsync thread
+  bool mVsyncEnabled; // Only access on main thread
+}; // SoftwareVsyncSource
+
 } // namespace gfx
 } // namespace mozilla
 
-#endif /* GFX_VSYNCSOURCE_H */
+#endif /* GFX_VSYNC_H */

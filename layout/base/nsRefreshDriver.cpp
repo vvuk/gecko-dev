@@ -59,7 +59,7 @@
 #include "mozilla/ipc/PBackgroundChild.h"
 #include "nsIIPCBackgroundChildCreateCallback.h"
 #include "mozilla/layout/VsyncChild.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 #include "nsThreadUtils.h"
 #include "mozilla/unused.h"
 #include "mozilla/TimelineConsumers.h"

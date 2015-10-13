@@ -9,15 +9,15 @@
 #include "mozilla/layout/PVsyncParent.h"
 #include "nsCOMPtr.h"
 #include "mozilla/nsRefPtr.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 class nsIThread;
 
 namespace mozilla {
 
 namespace gfx {
+class VsyncManager;
 class VsyncSource;
-class VsyncDisplay;
 } // namespace gfx
 
 namespace ipc {
@@ -35,7 +35,7 @@ class VsyncParent final : public PVsyncParent,
   friend class mozilla::ipc::BackgroundParentImpl;
 
 private:
-  static already_AddRefed<VsyncParent> Create(const nsID& aDisplayID);
+  static already_AddRefed<VsyncParent> Create(const nsID& aSourceID);
 
   VsyncParent();
   virtual ~VsyncParent();
@@ -51,7 +51,7 @@ private:
   bool mObservingVsync;
   bool mDestroyed;
   nsCOMPtr<nsIThread> mBackgroundThread;
-  nsRefPtr<gfx::VsyncDisplay> mVsyncDisplay;
+  nsRefPtr<gfx::VsyncSource> mVsyncSource;
 };
 
 } // namespace layout

@@ -120,8 +120,7 @@ class mozilla::gl::SkiaGLGlue : public GenericAtomicRefCounted {
 
 #include "nsIGfxInfo.h"
 #include "nsIXULRuntime.h"
-#include "VsyncSource.h"
-#include "SoftwareVsyncSource.h"
+#include "gfxVsync.h"
 #include "nscore.h" // for NS_FREE_PERMANENT_DATA
 #include "mozilla/dom/ContentChild.h"
 
@@ -572,9 +571,9 @@ gfxPlatform::Init()
 
     if (XRE_IsParentProcess()) {
       if (gfxPlatform::ForceSoftwareVsync()) {
-        gPlatform->mVsyncSource = (gPlatform)->gfxPlatform::CreateHardwareVsyncSource();
+        gPlatform->mVsyncManager = (gPlatform)->gfxPlatform::CreateHardwareVsyncManager();
       } else {
-        gPlatform->mVsyncSource = gPlatform->CreateHardwareVsyncSource();
+        gPlatform->mVsyncManager = gPlatform->CreateHardwareVsyncManager();
       }
     }
 }
@@ -623,9 +622,9 @@ gfxPlatform::Shutdown()
 
         gPlatform->mMemoryPressureObserver = nullptr;
         gPlatform->mSkiaGlue = nullptr;
-        if (gPlatform->mVsyncSource) {
-          gPlatform->mVsyncSource->Shutdown();
-          gPlatform->mVsyncSource = nullptr;
+        if (gPlatform->mVsyncManager) {
+          gPlatform->mVsyncManager->Shutdown();
+          gPlatform->mVsyncManager = nullptr;
         }
     }
 
@@ -2031,20 +2030,20 @@ gfxPlatform::UsesOffMainThreadCompositing()
   return result;
 }
 
-already_AddRefed<VsyncSource>
-gfxPlatform::CreateHardwareVsyncSource()
+already_AddRefed<VsyncManager>
+gfxPlatform::CreateHardwareVsyncManager()
 {
   NS_WARNING("Hardware Vsync support not yet implemented. Falling back to software timers");
-  return CreateSoftwareVsyncSource();
+  return CreateSoftwareVsyncManager();
 }
 
-already_AddRefed<VsyncSource>
-gfxPlatform::CreateSoftwareVsyncSource()
+already_AddRefed<VsyncManager>
+gfxPlatform::CreateSoftwareVsyncManager()
 {
-  nsRefPtr<SoftwareDisplay> display = new SoftwareDisplay(VsyncSource::kGlobalDisplayID);
-  nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
-  vsyncSource->RegisterDisplay(display);
-  return vsyncSource.forget();
+  nsRefPtr<SoftwareVsyncSource> display = new SoftwareVsyncSource(VsyncManager::kGlobalDisplaySourceID);
+  nsRefPtr<VsyncManager> vsyncManager = new VsyncManager();
+  vsyncManager->RegisterSource(display);
+  return vsyncManager.forget();
 }
 
 /* static */ bool

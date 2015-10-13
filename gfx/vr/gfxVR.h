@@ -177,7 +177,7 @@ public:
   VRHMDType GetType() const { return mType; }
   uint32_t GetDeviceIndex() const { return mDeviceIndex; }
   const nsCString& GetDeviceName() const { return mDeviceName; }
-  const nsID& GetDisplayID() const { return mDisplayID; }
+  const nsID& GetVsyncSourceID() const { return mVsyncSourceID; }
 
   virtual const VRFieldOfView& GetRecommendedEyeFOV(uint32_t whichEye) { return mRecommendedEyeFOV[whichEye]; }
   virtual const VRFieldOfView& GetMaximumEyeFOV(uint32_t whichEye) { return mMaximumEyeFOV[whichEye]; }
@@ -228,7 +228,7 @@ protected:
   VRHMDConfiguration mConfiguration;
   uint32_t mDeviceIndex;
   nsCString mDeviceName;
-  nsID mDisplayID;
+  nsID mVsyncSourceID;
 
   VRFieldOfView mEyeFOV[NumEyes];
   IntSize mEyeResolution;

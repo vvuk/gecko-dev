@@ -60,8 +60,9 @@ parent:
 
   PBackgroundIDBFactory(LoggingInfo loggingInfo);
 
-  // this Display ID can be mozilla::gfx::VsyncSource::kGlobalDisplay
-  PVsync(nsID aDisplayID);
+  // Create a PVsync for the given source ID.  If you don't know which one you need,
+  // use mozilla::gfx::VsyncManager::kGlobalDisplaySourceID
+  PVsync(nsID aSourceID);
 
   PCameras();
 

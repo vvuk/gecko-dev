@@ -11,7 +11,7 @@
 #include "mozilla/unused.h"
 #include "nsIThread.h"
 #include "nsThreadUtils.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 namespace mozilla {
 
@@ -20,15 +20,15 @@ using namespace ipc;
 namespace layout {
 
 /*static*/ already_AddRefed<VsyncParent>
-VsyncParent::Create(const nsID& aDisplayID)
+VsyncParent::Create(const nsID& aSourceID)
 {
   AssertIsOnBackgroundThread();
-  nsRefPtr<gfx::VsyncSource> vsyncSource = gfxPlatform::GetPlatform()->GetHardwareVsync();
+  nsRefPtr<gfx::VsyncManager> vsyncManager = gfxPlatform::GetPlatform()->GetHardwareVsync();
   nsRefPtr<VsyncParent> vsyncParent = new VsyncParent();
-  vsyncParent->mVsyncDisplay = vsyncSource->GetDisplay(aDisplayID);
-  if (!vsyncParent->mVsyncDisplay) {
+  vsyncParent->mVsyncSource = vsyncManager->GetSource(aSourceID);
+  if (!vsyncParent->mVsyncSource) {
     NS_WARNING("Couldn't obtain vsync source for given display ID, using global display instead!");
-    vsyncParent->mVsyncDisplay = vsyncSource->GetGlobalDisplay();
+    vsyncParent->mVsyncSource = vsyncManager->GetGlobalDisplaySource();
   }
   return vsyncParent.forget();
 }
@@ -81,7 +81,7 @@ VsyncParent::RecvObserve()
 {
   AssertIsOnBackgroundThread();
   if (!mObservingVsync) {
-    mVsyncDisplay->AddVsyncObserver(this);
+    mVsyncSource->AddVsyncObserver(this);
     mObservingVsync = true;
     return true;
   }
@@ -93,7 +93,7 @@ VsyncParent::RecvUnobserve()
 {
   AssertIsOnBackgroundThread();
   if (mObservingVsync) {
-    mVsyncDisplay->RemoveVsyncObserver(this);
+    mVsyncSource->RemoveVsyncObserver(this);
     mObservingVsync = false;
     return true;
   }
@@ -106,9 +106,9 @@ VsyncParent::ActorDestroy(ActorDestroyReason aReason)
   MOZ_ASSERT(!mDestroyed);
   AssertIsOnBackgroundThread();
   if (mObservingVsync) {
-    mVsyncDisplay->RemoveVsyncObserver(this);
+    mVsyncSource->RemoveVsyncObserver(this);
   }
-  mVsyncDisplay = nullptr;
+  mVsyncSource = nullptr;
   mDestroyed = true;
 }
 

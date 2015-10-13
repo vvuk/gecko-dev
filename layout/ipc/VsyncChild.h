@@ -9,7 +9,7 @@
 #include "mozilla/layout/PVsyncChild.h"
 #include "nsISupportsImpl.h"
 #include "mozilla/nsRefPtr.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 namespace mozilla {
 namespace ipc {
@@ -24,12 +24,12 @@ namespace layout {
 // PVsyncParent actor dies.
 class VsyncChild final :
     public PVsyncChild,
-    public gfx::VsyncDisplay
+    public gfx::VsyncSource
 {
   friend class mozilla::ipc::BackgroundChildImpl;
 
 public:
-  // VsyncDisplay implementation
+  // VsyncSource implementation
   void EnableVsync() override;
   void DisableVsync() override;
   bool IsVsyncEnabled() override { return mObservingVsync; }

@@ -49,9 +49,8 @@ EXPORTS += [
     'gfxTypes.h',
     'gfxUserFontSet.h',
     'gfxUtils.h',
+    'gfxVsync.h',
     'RoundedRect.h',
-    'SoftwareVsyncSource.h',
-    'VsyncSource.h',
 ]
 
 if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'android':
@@ -240,9 +239,8 @@ UNIFIED_SOURCES += [
     'gfxTextRun.cpp',
     'gfxUserFontSet.cpp',
     'gfxUtils.cpp',
+    'gfxVsync.cpp',
     'nsUnicodeRange.cpp',
-    'SoftwareVsyncSource.cpp',
-    'VsyncSource.cpp',
 ]
 
 if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'cocoa':

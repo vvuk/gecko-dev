@@ -23,7 +23,7 @@
 #include "nsServiceManagerUtils.h"
 #include "gfxPrefs.h"
 #include "cairo.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 #ifdef MOZ_WIDGET_ANDROID
 #include "AndroidBridge.h"
@@ -430,16 +430,16 @@ bool gfxAndroidPlatform::HaveChoiceOfHWAndSWCanvas()
 }
 
 #ifdef MOZ_WIDGET_GONK
-class GonkDisplay final : public VsyncDisplay
+class HWCVsyncSource final : public VsyncSource
 {
 public:
-  GonkDisplay(const nsID& aDisplayID)
-    : VsyncDisplay(aDisplayID)
+  HWCVsyncSource(const nsID& aSourceID)
+    : VsyncSource(aSourceID)
     , mVsyncEnabled(false)
   {
   }
 
-  ~GonkDisplay()
+  ~HWCVsyncSource()
   {
     DisableVsync();
   }
@@ -469,11 +469,11 @@ public:
   }
 private:
   bool mVsyncEnabled;
-}; // GonkDisplay
+}; // HWCVsyncSource
 #endif
 
-already_AddRefed<mozilla::gfx::VsyncSource>
-gfxAndroidPlatform::CreateHardwareVsyncSource()
+already_AddRefed<mozilla::gfx::VsyncManager>
+gfxAndroidPlatform::CreateHardwareVsyncManager()
 {
     // Only enable true hardware vsync on kit-kat and L device. Jelly Bean has
     // inaccurate hardware vsync so disable on JB. Android pre-JB doesn't have
@@ -481,18 +481,18 @@ gfxAndroidPlatform::CreateHardwareVsyncSource()
     // L is android version 21, L-MR1 is 22, kit-kat is 19, 20 is kit-kat for
     // wearables.
 #if defined(MOZ_WIDGET_GONK) && (ANDROID_VERSION == 19 || ANDROID_VERSION >= 21)
-    nsRefPtr<VsyncDisplay> display = new GonkDisplay(VsyncSource::kGlobalDisplayID);
+    nsRefPtr<VsyncSource> display = new HWCVsyncSource(VsyncManager::kGlobalDisplaySourceID);
     display->EnableVsync();
     if (!display->IsVsyncEnabled()) {
         NS_WARNING("Error enabling gonk vsync. Falling back to software vsync");
-        return gfxPlatform::CreateSoftwareVsyncSource();
+        return gfxPlatform::CreateSoftwareVsyncManager();
     }
     display->DisableVsync();
 
-    nsRefPtr<VsyncSource> vsyncSource = new VsyncSource();
-    vsyncSource->RegisterDisplay(display);
-    return vsyncSource.forget();
+    nsRefPtr<VsyncManager> vsyncManager = new VsyncManager();
+    vsyncManager->RegisterSource(display);
+    return vsyncManager.forget();
 #else
-    return gfxPlatform::CreateHardwareVsyncSource();
+    return gfxPlatform::CreateHardwareVsyncManager();
 #endif
 }

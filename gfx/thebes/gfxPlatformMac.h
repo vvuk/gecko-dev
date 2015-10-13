@@ -13,7 +13,7 @@
 namespace mozilla {
 namespace gfx {
 class DrawTarget;
-class VsyncSource;
+class VsyncManager;
 } // namespace gfx
 } // namespace mozilla
 
@@ -90,7 +90,7 @@ public:
     bool UseAcceleratedCanvas();
 
     virtual bool UseProgressivePaint() override;
-    virtual already_AddRefed<mozilla::gfx::VsyncSource> CreateHardwareVsyncSource() override;
+    virtual already_AddRefed<mozilla::gfx::VsyncManager> CreateHardwareVsyncManager() override;
 
     // lower threshold on font anti-aliasing
     uint32_t GetAntiAliasingThreshold() { return mFontAntiAliasingThreshold; }

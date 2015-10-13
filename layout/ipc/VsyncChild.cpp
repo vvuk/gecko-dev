@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "VsyncChild.h"
-#include "VsyncSource.h"
+#include "gfxVsync.h"
 
 #include "nsThreadUtils.h"
 
@@ -16,7 +16,7 @@ namespace mozilla {
 namespace layout {
 
 VsyncChild::VsyncChild(const nsID& aDisplayIdentifier)
-  : VsyncDisplay(aDisplayIdentifier)
+  : VsyncSource(aDisplayIdentifier)
   , mObservingVsync(false)
   , mIsShutdown(false)
 {
