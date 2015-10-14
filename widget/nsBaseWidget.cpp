@@ -66,6 +66,9 @@
 #ifdef ACCESSIBILITY
 #include "nsAccessibilityService.h"
 #endif
+#ifdef MOZ_NUWA_PROCESS
+#include "ipc/Nuwa.h"
+#endif
 
 PRLogModuleInfo *gVsyncLog = nullptr;
 #define VSYNC_LOG(...)  MOZ_LOG(gVsyncLog, mozilla::LogLevel::Debug, (__VA_ARGS__))
@@ -1148,6 +1151,15 @@ public:
   }
 
   void ObserveDisplayId(const nsID& aVsyncSourceID) {
+#ifdef MOZ_NUWA_PROCESS
+    // If we're the NUWA process, we don't actually observe anything here.  We can't
+    // set up a PVSync connection because we don't have Clone set up (and we don't need
+    // it anyway).
+    if (IsNuwaProcess()) {
+      return;
+    }
+#endif
+
     nsRefPtr<gfx::VsyncSource> display;
     if (XRE_IsParentProcess()) {
       // Parent; we can grab the vsync display directly
@@ -1230,7 +1242,8 @@ protected:
   // This is the owner widget for this vsync observer.  It always gets
   // deleted before the widget goes away.
   nsBaseWidget *mWidget;
-  // XXX can this be a bare pointer?
+  // If we're observing a widget.  It will always be a parent, which means
+  // that it will hold a ref to us in its children.
   nsIWidget* mObservedWidget;
   nsRefPtr<gfx::VsyncSource> mObservedSource;
 };
@@ -1294,9 +1307,6 @@ nsBaseWidget::UpdateVsyncObserver()
     VSYNC_LOG("[%s]: Widget %p creating incoming vsync observer %p\n", PARENT_OR_CHILD, this, mIncomingVsyncObserver.get());
   }
 
-  // XXX this will not work if the widget topology changes!
-  // we need a way to unobserve the previous thing we were observing,
-  // and start again.
   if (GetVsyncRootWidget() != this) {
     // if we're not the root widget, then just observe the root widget which will
     // forward to our own listeners.
